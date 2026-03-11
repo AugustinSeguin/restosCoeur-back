@@ -12,6 +12,7 @@ export interface Store {
 }
 
 export interface CreateStoreDto {
+  id: number;
   title: string;
   zoneId: number;
   minVolunteers: number;

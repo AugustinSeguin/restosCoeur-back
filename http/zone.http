@@ -1,0 +1,32 @@
+@api_url = http://localhost:3000/api
+@token = 
+
+### Create Zone
+POST {{api_url}}/zones
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Zone Nord"
+}
+
+### Get All Zones
+GET {{api_url}}/zones
+Authorization: Bearer {{token}}
+
+### Get Zone by ID
+GET {{api_url}}/zones/1
+Authorization: Bearer {{token}}
+
+### Update Zone
+PUT {{api_url}}/zones/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Zone Nord Updated"
+}
+
+### Delete Zone
+DELETE {{api_url}}/zones/1
+Authorization: Bearer {{token}}

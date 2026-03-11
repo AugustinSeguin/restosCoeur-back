@@ -1,0 +1,38 @@
+@api_url = http://localhost:3000/api
+@token = 
+
+### Create Store
+POST {{api_url}}/stores
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Magasin Paris 15",
+  "zoneId": 1,
+  "minVolunteers": 2,
+  "idealVolunteers": 5
+}
+
+### Get All Stores
+GET {{api_url}}/stores
+Authorization: Bearer {{token}}
+
+### Get Store by ID
+GET {{api_url}}/stores/1
+Authorization: Bearer {{token}}
+
+### Update Store
+PUT {{api_url}}/stores/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Magasin Paris 15 - Updated",
+  "zoneId": 1,
+  "minVolunteers": 3,
+  "idealVolunteers": 7
+}
+
+### Delete Store
+DELETE {{api_url}}/stores/1
+Authorization: Bearer {{token}}

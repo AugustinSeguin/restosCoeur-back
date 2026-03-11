@@ -39,43 +39,99 @@ npm install
 npm run build
 ```
 
-### 3. Configurer PM2 (processus manager)
+### 3. Configurer PM2 (gestionnaire de processus)
 
 ```bash
+ssh deploy@VPS_HOST
+
+# Installer PM2 globalement
 npm install -g pm2
 
 # Démarrer l'application
-pm2 start npm --name api -- run start
+pm2 start dist/index.js --name restos-coeur-api
 
-# Persistence des processus au reboot
+# Configurer la persistence au reboot
 pm2 startup
 pm2 save
+
+# Vérifier les processus
+pm2 list
+pm2 logs restos-coeur-api
+```
+
+## Variables d'environnement
+
+Créez un fichier `.env` sur le VPS :
+
+```bash
+ssh deploy@VPS_HOST
+cd /home/deploy/restos-coeur-api
+nano .env
+```
+
+Contenu du `.env` :
+
+```
+DATABASE_URL="postgresql://user:password@localhost:5432/restos_coeur?schema=public"
+PORT=3000
+NODE_ENV=production
 ```
 
 ## Workflow de déploiement
 
 À chaque push sur `main` ou `master` :
 
-1. ✅ Télécharge le code
-2. ✅ Configure Node.js v22.21.0
-3. ✅ Installe les dépendances (`npm ci`)
-4. ✅ Build le TypeScript (`npm run build`)
-5. ✅ Se connecte au VPS en SSH
-6. ✅ Pull les dernières modifications
-7. ✅ Installe et build sur le VPS
-8. ✅ Redémarre le process avec PM2
+1. ✅ **Checkout** — Télécharge le code du repository
+2. ✅ **Node.js** — Configure Node.js v22
+3. ✅ **Install** — Installe les dépendances (`npm install`)
+4. ✅ **Build** — Compile le TypeScript (`npm run build`)
+5. ✅ **SCP Copy** — Transfère les fichiers compilés via SCP :
+   - `dist/*` — Le code compilé
+   - `package.json` + `package-lock.json` — Les dépendances
+6. ✅ **SSH Commands** — Exécute les commandes post-déploiement :
+   - `npm install --production` — Installe uniquement les dépendances de production
+   - `pm2 restart||start` — Redémarre ou démarre l'application
 
 ## Dépannage
 
 ### Erreur : "Permission denied (publickey)"
 
-- Vérifiez que la clé SSH publique est dans `~/.ssh/authorized_keys` sur le VPS
-- Vérifiez que les permissions du dossier `.ssh` sont correctes : `chmod 700 ~/.ssh`
+- Vérifiez la clé SSH publique dans `~/.ssh/authorized_keys` sur le VPS
+- Permissions correctes : `chmod 700 ~/.ssh && chmod 600 ~/.ssh/authorized_keys`
 
 ### Erreur : "npm: command not found"
 
-- Installez Node.js sur le VPS : `curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt-get install -y nodejs`
+- Installez Node.js sur le VPS :
+  ```bash
+  curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+  ```
 
 ### Erreur : "pm2: command not found"
 
 - Installez PM2 globalement : `npm install -g pm2`
+
+### L'app ne redémarre pas après déploiement
+
+- Vérifiez que PM2 est actif : `pm2 list`
+- Vérifiez les logs : `pm2 logs restos-coeur-api`
+- Redémarrez manuellement : `pm2 restart restos-coeur-api`
+
+## Structure des fichiers sur le VPS
+
+```
+/home/deploy/restos-coeur-api/
+├── dist/              # Code compilé (copié par GitHub Actions)
+├── node_modules/      # Dépendances de production (installées par workflow)
+├── package.json       # Copié par GitHub Actions
+├── package-lock.json  # Copié par GitHub Actions
+├── .env              # À créer manuellement
+└── prisma/           # Schema Prisma (à copier manuellement)
+```
+
+## Notes importantes
+
+- ⚠️ Le fichier `.env` **NE doit PAS** être commité sur GitHub
+- ⚠️ Les fichiers de source TypeScript (`src/`) ne sont pas copiés (seulement `dist/`)
+- ⚠️ Les `node_modules` ne sont pas copiés, ils sont réinstallés sur le VPS
+- ⚠️ Utilisez `npm install --production` sur le VPS pour économiser l'espace disque

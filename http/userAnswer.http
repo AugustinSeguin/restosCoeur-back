@@ -1,0 +1,52 @@
+@api_url = http://localhost:3000/api
+@token = 
+
+### Create UserAnswer (Newcomer form submission)
+POST {{api_url}}/user-answers
+Content-Type: application/json
+
+{
+  "firstName": "Alice",
+  "lastName": "Martin",
+  "phoneNumber": "+33612345678",
+  "email": "alice.martin@example.com",
+  "collecteId": 1,
+  "storeSlotIds": [1, 2]
+}
+
+### Create UserAnswer with existing user
+POST {{api_url}}/user-answers
+Content-Type: application/json
+
+{
+  "firstName": "Bob",
+  "lastName": "Dupont",
+  "phoneNumber": "0612345678",
+  "email": "admin@example.com",
+  "collecteId": 1,
+  "storeSlotIds": [3]
+}
+
+### Update UserAnswer (change slots and profile)
+PUT {{api_url}}/user-answers/1
+Content-Type: application/json
+
+{
+  "firstName": "Alice",
+  "lastName": "Martin",
+  "phoneNumber": "0612345678",
+  "email": "alice.martin@example.com",
+  "storeSlotIds": [2, 3]
+}
+
+### Get UserAnswer by ID
+GET {{api_url}}/user-answers/1
+Authorization: Bearer {{token}}
+
+### Get all UserAnswers for a Collection
+GET {{api_url}}/collections/1/user-answers
+Authorization: Bearer {{token}}
+
+### Delete UserAnswer
+DELETE {{api_url}}/user-answers/1
+Authorization: Bearer {{token}}

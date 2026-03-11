@@ -1,0 +1,61 @@
+@api_url = http://localhost:3000/api
+@token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc3MzIzNzE4OSwiZXhwIjoxNzczMzIzNTg5fQ.0yttqutpuVt-Yx8FS8uEeWzukx7hlu9n2Hm-FI4qrzM"
+
+### Create User
+POST {{api_url}}/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "lastName": "Dupont",
+  "firstName": "Jean",
+  "email": "admin@example.com",
+  "phoneNumber": "0612345678",
+  "isActive": true,
+  "isAdmin": true,
+  "type": "permanent",
+  "password": "password123"
+}
+
+### Create Admin User
+POST {{api_url}}/users
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "lastName": "Admin",
+  "firstName": "Super",
+  "email": "admin@example.com",
+  "phoneNumber": "0698765432",
+  "password": "password123",
+  "isActive": true,
+  "isAdmin": true,
+  "type": "permanent"
+}
+
+### Get All Users
+GET {{api_url}}/users
+Authorization: Bearer {{token}}
+
+### Get User by ID
+GET {{api_url}}/users/1
+Authorization: Bearer {{token}}
+
+### Update User
+PUT {{api_url}}/users/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "lastName": "Dupont",
+  "firstName": "Jean-Pierre",
+  "email": "jean.dupont@example.com",
+  "phoneNumber": "0612345678",
+  "isActive": true,
+  "isAdmin": true,
+  "type": "occasional"
+}
+
+### Delete User
+DELETE {{api_url}}/users/2
+Authorization: Bearer {{token}}

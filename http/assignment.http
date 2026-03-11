@@ -1,0 +1,33 @@
+@api_url = http://localhost:3000/api
+@token = 
+@userId = 1
+@storeSlotId = 3
+@collectionId = 2
+
+### Create Assignment
+POST {{api_url}}/assignments
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "userId": {{userId}},
+  "storeSlotId": {{storeSlotId}}
+}
+
+### Get Assignments by Collection ID
+GET {{api_url}}/collections/{{collectionId}}/assignments
+Authorization: Bearer {{token}}
+
+### Update Assignment
+PUT {{api_url}}/assignments/{{userId}}/{{storeSlotId}}
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "newUserId": 2,
+  "newStoreSlotId": 2
+}
+
+### Delete Assignment
+DELETE {{api_url}}/assignments/{{userId}}/{{storeSlotId}}
+Authorization: Bearer {{token}}

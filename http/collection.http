@@ -1,0 +1,32 @@
+@api_url = http://localhost:3000/api
+@token = 
+
+### Create Collection
+POST {{api_url}}/collections
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Collecte Mars 2026",
+  "isActive": true,
+  "formUrl": "https://forms.example.com/collecte1"
+}
+
+### Get All Collections
+GET {{api_url}}/collections
+Authorization: Bearer {{token}}
+
+### Get Collection by ID
+GET {{api_url}}/collections/1
+Authorization: Bearer {{token}}
+
+### Update Collection
+PUT {{api_url}}/collections/1
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Collecte Mars 2026 - Updated",
+  "isActive": true,
+  "formUrl": "https://forms.example.com/collecte1-updated"
+}

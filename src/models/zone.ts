@@ -9,5 +9,6 @@ export interface Zone {
 }
 
 export interface CreateZoneDto {
+  id: number;
   title: string;
 }

@@ -9,6 +9,7 @@ export interface StoreSlot {
 }
 
 export interface CreateStoreSlotDto {
+  id: number;
   startAt: Date;
   endAt: Date;
   storeId: number;

@@ -7,11 +7,11 @@
     "node": "22.21.0"
   },
   "scripts": {
-    "build": "tsc",
+    "db:generate": "prisma generate",
+    "build": "npm run db:generate && tsc",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
     "db:migrate": "prisma migrate dev",
-    "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -27,12 +27,16 @@
   },
   "homepage": "https://github.com/AugustinSeguin/restosCoeur-back#readme",
   "dependencies": {
-    "@prisma/client": "^7.4.2",
+    "@prisma/client": "^6.19.2",
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.3.1",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.4.0",
     "prisma": "^6.19.2",
     "tsx": "^4.21.0",

@@ -18,11 +18,12 @@ enum UserType {
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Collection {
-  id       Int              @id @default(autoincrement())
-  title    String
-  isActive Boolean          @default(true)
-  formUrl  String
-  zones    CollectionZone[]
+  id          Int            @id @default(autoincrement())
+  title       String
+  isActive    Boolean        @default(true)
+  formUrl     String
+  zones       CollectionZone[]
+  userAnswers UserAnswer[]
 }
 
 model Zone {
@@ -53,26 +54,28 @@ model Store {
 }
 
 model StoreSlot {
-  id          Int          @id @default(autoincrement())
-  startAt     DateTime
-  endAt       DateTime
-  storeId     Int
-  store       Store        @relation(fields: [storeId], references: [id])
-  assignments Assignment[]
+  id               Int              @id @default(autoincrement())
+  startAt          DateTime
+  endAt            DateTime
+  storeId          Int
+  store            Store            @relation(fields: [storeId], references: [id])
+  assignments      Assignment[]
+  userAnswerSlots  UserAnswerSlot[]
 }
 
 model User {
   id          Int          @id @default(autoincrement())
   lastName    String
   firstName   String
-  email       String?
-  phoneNumber String
+  email       String?      @unique
+  phoneNumber String       @unique
   /// Null if isAdmin = false
   password    String?
   isActive    Boolean      @default(true)
   isAdmin     Boolean      @default(false)
   type        UserType
   assignments Assignment[]
+  userAnswers UserAnswer[]
 }
 
 model Assignment {
@@ -82,4 +85,27 @@ model Assignment {
   storeSlot   StoreSlot @relation(fields: [storeSlotId], references: [id])
 
   @@id([userId, storeSlotId])
+}
+
+model UserAnswer {
+  id          Int                  @id @default(autoincrement())
+  userId      Int
+  collecteId  Int
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collection  Collection           @relation(fields: [collecteId], references: [id], onDelete: Cascade)
+  storeSlots  UserAnswerSlot[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([userId, collecteId])
+}
+
+/// Join table UserAnswer <-> StoreSlot (many-to-many)
+model UserAnswerSlot {
+  userAnswerId Int
+  storeSlotId  Int
+  userAnswer   UserAnswer @relation(fields: [userAnswerId], references: [id], onDelete: Cascade)
+  storeSlot    StoreSlot  @relation(fields: [storeSlotId], references: [id], onDelete: Cascade)
+
+  @@id([userAnswerId, storeSlotId])
 }

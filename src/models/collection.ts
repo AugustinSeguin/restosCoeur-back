@@ -9,6 +9,7 @@ export interface Collection {
 }
 
 export interface CreateCollectionDto {
+  id: number;
   title: string;
   isActive?: boolean;
   formUrl: string;

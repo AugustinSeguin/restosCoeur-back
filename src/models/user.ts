@@ -18,6 +18,7 @@ export interface User {
 }
 
 export interface CreateUserDto {
+  id: number;
   lastName: string;
   firstName: string;
   email?: string | null;
