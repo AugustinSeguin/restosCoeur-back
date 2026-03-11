@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum UserType {
+  permanent
+  occasional
+  newcomer
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model Collection {
+  id       Int              @id @default(autoincrement())
+  title    String
+  isActive Boolean          @default(true)
+  formUrl  String
+  zones    CollectionZone[]
+}
+
+model Zone {
+  id          Int              @id @default(autoincrement())
+  title       String
+  collections CollectionZone[]
+  stores      Store[]
+}
+
+/// Join table Collection <-> Zone (explicit many-to-many)
+model CollectionZone {
+  collectionId Int
+  zoneId       Int
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  zone         Zone       @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+
+  @@id([collectionId, zoneId])
+}
+
+model Store {
+  id             Int         @id @default(autoincrement())
+  title          String
+  zoneId         Int
+  zone           Zone        @relation(fields: [zoneId], references: [id])
+  minVolunteers  Int
+  idealVolunteers Int
+  slots          StoreSlot[]
+}
+
+model StoreSlot {
+  id          Int          @id @default(autoincrement())
+  startAt     DateTime
+  endAt       DateTime
+  storeId     Int
+  store       Store        @relation(fields: [storeId], references: [id])
+  assignments Assignment[]
+}
+
+model User {
+  id          Int          @id @default(autoincrement())
+  lastName    String
+  firstName   String
+  email       String?
+  phoneNumber String
+  /// Null if isAdmin = false
+  password    String?
+  isActive    Boolean      @default(true)
+  isAdmin     Boolean      @default(false)
+  type        UserType
+  assignments Assignment[]
+}
+
+model Assignment {
+  userId      Int
+  storeSlotId Int
+  user        User      @relation(fields: [userId], references: [id])
+  storeSlot   StoreSlot @relation(fields: [storeSlotId], references: [id])
+
+  @@id([userId, storeSlotId])
+}
