@@ -1,5 +1,10 @@
 import { Request, Response } from "express";
 import prisma from "@/libs/prisma";
+import { Prisma } from "@prisma/client";
+
+const isValidPhoneNumber = (phoneNumber: unknown): phoneNumber is string => {
+  return typeof phoneNumber === "string" && /^0[67]\d{8}$/.test(phoneNumber);
+};
 
 const normalizeStoreSlotIds = (storeSlotIds: unknown): number[] => {
   if (!Array.isArray(storeSlotIds)) return [];
@@ -42,6 +47,13 @@ export const createUserAnswer = async (req: Request, res: Response) => {
     if (!lastName || !firstName || !phoneNumber || !collecteId) {
       return res.status(400).json({
         error: "lastName, firstName, phoneNumber, and collecteId are required",
+      });
+    }
+
+    if (!isValidPhoneNumber(phoneNumber)) {
+      return res.status(400).json({
+        error:
+          "Invalid phoneNumber format. Expected 10 digits, starting with 06 or 07, with no spaces or special characters",
       });
     }
 
@@ -160,7 +172,7 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "UserAnswer not found" });
     }
 
-    const conflictingUser = await prisma.user.findFirst({
+    const conflictingPhone = await prisma.user.findFirst({
       where: {
         phoneNumber,
         NOT: { id: existingAnswer.user.id },
@@ -168,10 +180,26 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
       select: { id: true },
     });
 
-    if (conflictingUser) {
+    if (conflictingPhone) {
       return res.status(409).json({
         error: `Phone number ${phoneNumber} is already used by another user`,
       });
+    }
+
+    if (email) {
+      const conflictingEmail = await prisma.user.findFirst({
+        where: {
+          email,
+          NOT: { id: existingAnswer.user.id },
+        },
+        select: { id: true },
+      });
+
+      if (conflictingEmail) {
+        return res.status(409).json({
+          error: `Email ${email} is already used by another user`,
+        });
+      }
     }
 
     const missingStoreSlotIds = await findMissingStoreSlotIds(
@@ -235,6 +263,16 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
     res.json(updatedAnswer);
   } catch (error) {
     console.error(error);
+
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return res.status(409).json({
+        error: "Email or phone number already exists",
+      });
+    }
+
     res.status(400).json({ error: "Failed to update user answer" });
   }
 };

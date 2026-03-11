@@ -2,6 +2,10 @@ import { Request, Response } from "express";
 import prisma from "@/libs/prisma";
 import bcrypt from "bcrypt";
 
+const isValidPhoneNumber = (phoneNumber: unknown): phoneNumber is string => {
+  return typeof phoneNumber === "string" && /^0[67]\d{8}$/.test(phoneNumber);
+};
+
 export const createUser = async (req: Request, res: Response) => {
   try {
     const {
@@ -14,6 +18,13 @@ export const createUser = async (req: Request, res: Response) => {
       isAdmin,
       type,
     } = req.body;
+
+    if (!isValidPhoneNumber(phoneNumber)) {
+      return res.status(400).json({
+        error:
+          "Invalid phoneNumber format. Expected 10 digits, starting with 06 or 07, with no spaces or special characters",
+      });
+    }
 
     // Hash password if user is admin
     let hashedPassword: string | null = null;

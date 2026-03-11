@@ -34,7 +34,7 @@ Content-Type: application/json
 {
   "firstName": "Alice",
   "lastName": "Martin",
-  "phoneNumber": "0612345678",
+  "phoneNumber": "+33612345678",
   "email": "alice.martin@example.com",
   "storeSlotIds": [2, 3]
 }
