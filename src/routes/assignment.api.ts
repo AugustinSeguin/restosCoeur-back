@@ -3,10 +3,10 @@ import prisma from "@/libs/prisma";
 
 export const createAssignment = async (req: Request, res: Response) => {
   try {
-    const { userId, storeSlotId } = req.body;
+    const { userId, slotId, storeId, collectionId } = req.body;
     const assignment = await prisma.assignment.create({
-      data: { userId, storeSlotId },
-      include: { user: true, storeSlot: true },
+      data: { userId, slotId, storeId, collectionId },
+      include: { user: true, slot: true, store: true, collection: true },
     });
     res.status(201).json(assignment);
   } catch (error) {
@@ -16,27 +16,40 @@ export const createAssignment = async (req: Request, res: Response) => {
 
 export const updateAssignment = async (req: Request, res: Response) => {
   try {
+    const collectionId = Array.isArray(req.params.collectionId)
+      ? req.params.collectionId[0]
+      : req.params.collectionId;
     const userId = Array.isArray(req.params.userId)
       ? req.params.userId[0]
       : req.params.userId;
-    const storeSlotId = Array.isArray(req.params.storeSlotId)
-      ? req.params.storeSlotId[0]
-      : req.params.storeSlotId;
-    const { newUserId, newStoreSlotId } = req.body;
+    const slotId = Array.isArray(req.params.slotId)
+      ? req.params.slotId[0]
+      : req.params.slotId;
+    const storeId = Array.isArray(req.params.storeId)
+      ? req.params.storeId[0]
+      : req.params.storeId;
+    const { newUserId, newSlotId, newStoreId, newCollectionId } = req.body;
 
     // Delete old, create new
     await prisma.assignment.delete({
       where: {
-        userId_storeSlotId: {
+        userId_slotId_storeId_collectionId: {
           userId: Number.parseInt(userId),
-          storeSlotId: Number.parseInt(storeSlotId),
+          slotId: Number.parseInt(slotId),
+          storeId: Number.parseInt(storeId),
+          collectionId: Number.parseInt(collectionId),
         },
       },
     });
 
     const assignment = await prisma.assignment.create({
-      data: { userId: newUserId, storeSlotId: newStoreSlotId },
-      include: { user: true, storeSlot: true },
+      data: {
+        userId: newUserId,
+        slotId: newSlotId,
+        storeId: newStoreId,
+        collectionId: newCollectionId,
+      },
+      include: { user: true, slot: true, store: true, collection: true },
     });
     res.json(assignment);
   } catch (error) {
@@ -46,17 +59,25 @@ export const updateAssignment = async (req: Request, res: Response) => {
 
 export const deleteAssignment = async (req: Request, res: Response) => {
   try {
+    const collectionId = Array.isArray(req.params.collectionId)
+      ? req.params.collectionId[0]
+      : req.params.collectionId;
     const userId = Array.isArray(req.params.userId)
       ? req.params.userId[0]
       : req.params.userId;
-    const storeSlotId = Array.isArray(req.params.storeSlotId)
-      ? req.params.storeSlotId[0]
-      : req.params.storeSlotId;
+    const slotId = Array.isArray(req.params.slotId)
+      ? req.params.slotId[0]
+      : req.params.slotId;
+    const storeId = Array.isArray(req.params.storeId)
+      ? req.params.storeId[0]
+      : req.params.storeId;
     await prisma.assignment.delete({
       where: {
-        userId_storeSlotId: {
+        userId_slotId_storeId_collectionId: {
           userId: Number.parseInt(userId),
-          storeSlotId: Number.parseInt(storeSlotId),
+          slotId: Number.parseInt(slotId),
+          storeId: Number.parseInt(storeId),
+          collectionId: Number.parseInt(collectionId),
         },
       },
     });
@@ -75,22 +96,9 @@ export const getAssignmentsByCollectionId = async (
       ? req.params.collectionId[0]
       : req.params.collectionId;
 
-    // Get all zones in collection, then all stores in those zones, then all slots in those stores
     const assignments = await prisma.assignment.findMany({
-      where: {
-        storeSlot: {
-          store: {
-            zone: {
-              collections: {
-                some: {
-                  collectionId: Number.parseInt(collectionId),
-                },
-              },
-            },
-          },
-        },
-      },
-      include: { user: true, storeSlot: true },
+      where: { collectionId: Number.parseInt(collectionId) },
+      include: { user: true, slot: true, store: true, collection: true },
     });
     res.json(assignments);
   } catch (error) {

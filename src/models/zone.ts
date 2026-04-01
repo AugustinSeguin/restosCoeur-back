@@ -1,14 +1,20 @@
 import type { Collection } from "./collection";
 import type { Store } from "./store";
 
+export interface ZoneCollectionLink {
+  collectionId: number;
+  zoneId: number;
+  collection?: Collection;
+}
+
 export interface Zone {
   id: number;
   title: string;
-  collections?: Collection[];
+  collections?: ZoneCollectionLink[];
   stores?: Store[];
 }
 
 export interface CreateZoneDto {
-  id: number;
   title: string;
+  collectionIds?: number[];
 }

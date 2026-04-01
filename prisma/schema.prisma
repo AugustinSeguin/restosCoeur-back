@@ -18,12 +18,14 @@ enum UserType {
 // ─── Models ──────────────────────────────────────────────────────────────────
 
 model Collection {
-  id          Int            @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   title       String
-  isActive    Boolean        @default(true)
+  isActive    Boolean          @default(true)
   formUrl     String
   zones       CollectionZone[]
-  userAnswers UserAnswer[]
+  users       CollectionUser[]
+  slots       Slot[]
+  assignments Assignment[]
 }
 
 model Zone {
@@ -31,6 +33,7 @@ model Zone {
   title       String
   collections CollectionZone[]
   stores      Store[]
+  userAnswers UserAnswer[]
 }
 
 /// Join table Collection <-> Zone (explicit many-to-many)
@@ -44,68 +47,87 @@ model CollectionZone {
 }
 
 model Store {
-  id             Int         @id @default(autoincrement())
-  title          String
-  zoneId         Int
-  zone           Zone        @relation(fields: [zoneId], references: [id])
-  minVolunteers  Int
+  id              Int          @id @default(autoincrement())
+  title           String
+  zoneId          Int
+  zone            Zone         @relation(fields: [zoneId], references: [id])
+  openingTime     String
+  closingTime     String
+  isOpenSunday    Boolean      @default(false)
+  minVolunteers   Int
   idealVolunteers Int
-  slots          StoreSlot[]
+  assignments     Assignment[]
 }
 
-model StoreSlot {
-  id               Int              @id @default(autoincrement())
-  startAt          DateTime
-  endAt            DateTime
-  storeId          Int
-  store            Store            @relation(fields: [storeId], references: [id])
-  assignments      Assignment[]
-  userAnswerSlots  UserAnswerSlot[]
+model Slot {
+  id           Int          @id @default(autoincrement())
+  startAt      DateTime
+  endAt        DateTime
+  collectionId Int
+  collection   Collection   @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  assignments  Assignment[]
+  userAnswers  UserAnswer[]
 }
 
 model User {
-  id          Int          @id @default(autoincrement())
+  id          Int              @id @default(autoincrement())
   lastName    String
   firstName   String
-  email       String?      @unique
-  phoneNumber String       @unique
+  username    String           @unique
+  birthdate   DateTime         @db.Date
+  codePostal  String
+  email       String?
+  phoneNumber String
   /// Null if isAdmin = false
   password    String?
-  isActive    Boolean      @default(true)
-  isAdmin     Boolean      @default(false)
+  isActive    Boolean          @default(true)
+  isAdmin     Boolean          @default(false)
   type        UserType
+  collections CollectionUser[]
   assignments Assignment[]
   userAnswers UserAnswer[]
 }
 
-model Assignment {
-  userId      Int
-  storeSlotId Int
-  user        User      @relation(fields: [userId], references: [id])
-  storeSlot   StoreSlot @relation(fields: [storeSlotId], references: [id])
+/// Join table Collection <-> User (explicit many-to-many)
+model CollectionUser {
+  collectionId Int
+  userId       Int
+  collection   Collection   @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userAnswers  UserAnswer[]
 
-  @@id([userId, storeSlotId])
+  @@id([collectionId, userId])
+}
+
+model Assignment {
+  userId       Int
+  slotId       Int
+  storeId      Int
+  collectionId Int
+  user         User       @relation(fields: [userId], references: [id])
+  slot         Slot       @relation(fields: [slotId], references: [id])
+  store        Store      @relation(fields: [storeId], references: [id])
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, slotId, storeId, collectionId])
+  @@index([collectionId])
 }
 
 model UserAnswer {
-  id          Int                  @id @default(autoincrement())
-  userId      Int
-  collecteId  Int
-  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  collection  Collection           @relation(fields: [collecteId], references: [id], onDelete: Cascade)
-  storeSlots  UserAnswerSlot[]
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  id             Int            @id @default(autoincrement())
+  userId         Int
+  collectionId   Int            @map("collecteId")
+  slotId         Int?
+  zoneId         Int?
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collectionUser CollectionUser @relation(fields: [collectionId, userId], references: [collectionId, userId], onDelete: Cascade)
+  slot           Slot?          @relation(fields: [slotId], references: [id], onDelete: SetNull)
+  zone           Zone?          @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 
-  @@unique([userId, collecteId])
-}
-
-/// Join table UserAnswer <-> StoreSlot (many-to-many)
-model UserAnswerSlot {
-  userAnswerId Int
-  storeSlotId  Int
-  userAnswer   UserAnswer @relation(fields: [userAnswerId], references: [id], onDelete: Cascade)
-  storeSlot    StoreSlot  @relation(fields: [storeSlotId], references: [id], onDelete: Cascade)
-
-  @@id([userAnswerId, storeSlotId])
+  @@index([userId, collectionId])
+  @@index([collectionId])
+  @@index([slotId])
+  @@index([zoneId])
 }

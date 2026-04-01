@@ -1,14 +1,22 @@
 import type { User } from "./user";
-import type { StoreSlot } from "./storeSlot";
+import type { Slot } from "./slot";
+import type { Store } from "./store";
+import type { Collection } from "./collection";
 
 export interface Assignment {
   userId: number;
-  storeSlotId: number;
+  slotId: number;
+  storeId: number;
+  collectionId: number;
   user?: User;
-  storeSlot?: StoreSlot;
+  slot?: Slot;
+  store?: Store;
+  collection?: Collection;
 }
 
 export interface CreateAssignmentDto {
   userId: number;
-  storeSlotId: number;
+  slotId: number;
+  storeId: number;
+  collectionId: number;
 }

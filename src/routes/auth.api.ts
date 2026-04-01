@@ -22,12 +22,10 @@ export const login = async (req: Request, res: Response) => {
 
     // Check if password is set (admin users only)
     if (!user.password) {
-      return res
-        .status(401)
-        .json({
-          error:
-            "This user account does not have password authentication enabled",
-        });
+      return res.status(401).json({
+        error:
+          "This user account does not have password authentication enabled",
+      });
     }
 
     // Verify password
@@ -46,6 +44,9 @@ export const login = async (req: Request, res: Response) => {
         id: user.id,
         lastName: user.lastName,
         firstName: user.firstName,
+        username: user.username,
+        birthdate: user.birthdate,
+        codePostal: user.codePostal,
         email: user.email,
         isAdmin: user.isAdmin,
         type: user.type,

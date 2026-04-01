@@ -1,53 +1,205 @@
 import { Request, Response } from "express";
-import prisma from "@/libs/prisma";
 import { Prisma } from "@prisma/client";
+import prisma from "@/libs/prisma";
 
 const isValidPhoneNumber = (phoneNumber: unknown): phoneNumber is string => {
   return typeof phoneNumber === "string" && /^0[67]\d{8}$/.test(phoneNumber);
 };
 
-const normalizeStoreSlotIds = (storeSlotIds: unknown): number[] => {
-  if (!Array.isArray(storeSlotIds)) return [];
+const isValidCodePostal = (codePostal: unknown): codePostal is string => {
+  return typeof codePostal === "string" && /^\d{5}$/.test(codePostal);
+};
 
-  const normalized = storeSlotIds
+const parseBirthdate = (birthdate: unknown): Date | null => {
+  if (!(typeof birthdate === "string" || birthdate instanceof Date)) {
+    return null;
+  }
+
+  const parsedDate = new Date(birthdate);
+  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+};
+
+const sanitizeNamePart = (value: string): string => {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z]/g, "");
+};
+
+const generateUsername = (
+  lastName: unknown,
+  firstName: unknown,
+): string | null => {
+  if (typeof lastName !== "string" || typeof firstName !== "string") {
+    return null;
+  }
+
+  const username = `${sanitizeNamePart(lastName)}${sanitizeNamePart(firstName)}`;
+  return username.length > 0 ? username : null;
+};
+
+const normalizeIds = (ids: unknown): number[] => {
+  if (!Array.isArray(ids)) return [];
+
+  const normalized = ids
     .map((id) => (typeof id === "string" ? Number.parseInt(id, 10) : id))
     .filter((id): id is number => Number.isInteger(id) && id > 0);
 
   return [...new Set(normalized)];
 };
 
-const findMissingStoreSlotIds = async (
-  storeSlotIds: number[],
-): Promise<number[]> => {
-  if (storeSlotIds.length === 0) return [];
+const normalizeOptionalId = (value: unknown): number | null | undefined => {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return null;
 
-  const existingSlots = await prisma.storeSlot.findMany({
-    where: { id: { in: storeSlotIds } },
+  const parsed =
+    typeof value === "string" ? Number.parseInt(value, 10) : (value as number);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    return undefined;
+  }
+
+  return parsed;
+};
+
+const findInvalidSlotIdsForCollection = async (
+  slotIds: number[],
+  collectionId: number,
+): Promise<number[]> => {
+  if (slotIds.length === 0) return [];
+
+  const existingSlots = await prisma.slot.findMany({
+    where: { id: { in: slotIds }, collectionId },
     select: { id: true },
   });
 
   const existingIds = new Set(existingSlots.map((slot) => slot.id));
-  return storeSlotIds.filter((id) => !existingIds.has(id));
+  return slotIds.filter((id) => !existingIds.has(id));
 };
+
+const findInvalidZoneIdsForCollection = async (
+  zoneIds: number[],
+  collectionId: number,
+): Promise<number[]> => {
+  if (zoneIds.length === 0) return [];
+
+  const existingLinks = await prisma.collectionZone.findMany({
+    where: {
+      collectionId,
+      zoneId: { in: zoneIds },
+    },
+    select: { zoneId: true },
+  });
+
+  const existingIds = new Set(existingLinks.map((link) => link.zoneId));
+  return zoneIds.filter((id) => !existingIds.has(id));
+};
+
+type AnswerSelection = {
+  slotId: number | null;
+  zoneId: number | null;
+};
+
+const buildSelections = (
+  slotIds: number[],
+  zoneIds: number[],
+  slotId: number | null | undefined,
+  zoneId: number | null | undefined,
+): AnswerSelection[] => {
+  if (slotIds.length > 0 && zoneIds.length > 0) {
+    return slotIds.flatMap((s) =>
+      zoneIds.map((z) => ({ slotId: s, zoneId: z })),
+    );
+  }
+
+  if (slotIds.length > 0) {
+    return slotIds.map((s) => ({ slotId: s, zoneId: zoneId ?? null }));
+  }
+
+  if (zoneIds.length > 0) {
+    return zoneIds.map((z) => ({ slotId: slotId ?? null, zoneId: z }));
+  }
+
+  return [{ slotId: slotId ?? null, zoneId: zoneId ?? null }];
+};
+
+const dedupeSelections = (selections: AnswerSelection[]): AnswerSelection[] => {
+  const seen = new Set<string>();
+  const output: AnswerSelection[] = [];
+
+  for (const selection of selections) {
+    const key = `${selection.slotId ?? "null"}:${selection.zoneId ?? "null"}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      output.push(selection);
+    }
+  }
+
+  return output;
+};
+
+const userAnswerInclude = {
+  user: {
+    select: {
+      id: true,
+      lastName: true,
+      firstName: true,
+      username: true,
+      birthdate: true,
+      codePostal: true,
+      email: true,
+      phoneNumber: true,
+    },
+  },
+  collectionUser: {
+    include: {
+      collection: true,
+    },
+  },
+  slot: true,
+  zone: true,
+} as const;
 
 export const createUserAnswer = async (req: Request, res: Response) => {
   try {
     const {
       lastName,
       firstName,
+      birthdate,
+      codePostal,
       phoneNumber,
       email,
-      collecteId,
-      storeSlotIds,
+      slotIds,
+      zoneIds,
+      slotId,
+      zoneId,
     } = req.body;
 
-    const normalizedStoreSlotIds = normalizeStoreSlotIds(storeSlotIds);
+    const rawCollectionId = req.body.collectionId ?? req.body.collecteId;
+    const parsedCollectionId = Number.parseInt(String(rawCollectionId), 10);
 
-    // Validate required fields
-    if (!lastName || !firstName || !phoneNumber || !collecteId) {
+    const normalizedSlotIds = normalizeIds(slotIds);
+    const normalizedZoneIds = normalizeIds(zoneIds);
+    const normalizedSlotId = normalizeOptionalId(slotId);
+    const normalizedZoneId = normalizeOptionalId(zoneId);
+
+    if (
+      !lastName ||
+      !firstName ||
+      !birthdate ||
+      !codePostal ||
+      !phoneNumber ||
+      !rawCollectionId
+    ) {
       return res.status(400).json({
-        error: "lastName, firstName, phoneNumber, and collecteId are required",
+        error:
+          "lastName, firstName, birthdate, codePostal, phoneNumber, and collectionId are required",
       });
+    }
+
+    if (!Number.isInteger(parsedCollectionId) || parsedCollectionId <= 0) {
+      return res.status(400).json({ error: "Invalid collectionId" });
     }
 
     if (!isValidPhoneNumber(phoneNumber)) {
@@ -57,36 +209,75 @@ export const createUserAnswer = async (req: Request, res: Response) => {
       });
     }
 
-    // Check if UserAnswer already exists for this collection and phone number
-    const existingAnswer = await prisma.userAnswer.findFirst({
-      where: {
-        collecteId: Number.parseInt(collecteId),
-        user: {
-          phoneNumber: phoneNumber,
-        },
-      },
-    });
-
-    if (existingAnswer) {
-      return res.status(409).json({
-        error: `User with phone number ${phoneNumber} already answered this collection`,
-      });
-    }
-
-    const missingStoreSlotIds = await findMissingStoreSlotIds(
-      normalizedStoreSlotIds,
-    );
-    if (missingStoreSlotIds.length > 0) {
+    if (!isValidCodePostal(codePostal)) {
       return res.status(400).json({
-        error: "Some storeSlotIds do not exist",
-        missingStoreSlotIds,
+        error: "Invalid codePostal format. Expected exactly 5 digits",
       });
     }
 
-    // Find or create user
+    const parsedBirthdate = parseBirthdate(birthdate);
+    if (!parsedBirthdate) {
+      return res.status(400).json({
+        error: "Invalid birthdate format. Expected a valid date",
+      });
+    }
+
+    const username = generateUsername(lastName, firstName);
+    if (!username) {
+      return res.status(400).json({
+        error:
+          "Unable to generate username from lastName and firstName. Use latin letters a-z",
+      });
+    }
+
+    const slotIdsToValidate = dedupeSelections(
+      buildSelections(
+        normalizedSlotIds,
+        normalizedZoneIds,
+        normalizedSlotId,
+        normalizedZoneId,
+      ),
+    )
+      .map((selection) => selection.slotId)
+      .filter((id): id is number => typeof id === "number");
+
+    const zoneIdsToValidate = dedupeSelections(
+      buildSelections(
+        normalizedSlotIds,
+        normalizedZoneIds,
+        normalizedSlotId,
+        normalizedZoneId,
+      ),
+    )
+      .map((selection) => selection.zoneId)
+      .filter((id): id is number => typeof id === "number");
+
+    const invalidSlotIds = await findInvalidSlotIdsForCollection(
+      [...new Set(slotIdsToValidate)],
+      parsedCollectionId,
+    );
+    if (invalidSlotIds.length > 0) {
+      return res.status(400).json({
+        error: "Some slotIds are invalid or do not belong to this collection",
+        invalidSlotIds,
+      });
+    }
+
+    const invalidZoneIds = await findInvalidZoneIdsForCollection(
+      [...new Set(zoneIdsToValidate)],
+      parsedCollectionId,
+    );
+    if (invalidZoneIds.length > 0) {
+      return res.status(400).json({
+        error: "Some zoneIds are invalid or do not belong to this collection",
+        invalidZoneIds,
+      });
+    }
+
     let user = await prisma.user.findFirst({
       where: {
-        phoneNumber: phoneNumber,
+        phoneNumber,
+        username,
       },
     });
 
@@ -95,6 +286,9 @@ export const createUserAnswer = async (req: Request, res: Response) => {
         data: {
           lastName,
           firstName,
+          username,
+          birthdate: parsedBirthdate,
+          codePostal,
           email: email || null,
           phoneNumber,
           password: null,
@@ -105,64 +299,112 @@ export const createUserAnswer = async (req: Request, res: Response) => {
       });
     }
 
-    // Create UserAnswer with store slots
-    const userAnswer = await prisma.userAnswer.create({
-      data: {
-        userId: user.id,
-        collecteId: Number.parseInt(collecteId),
-        storeSlots: {
-          create: normalizedStoreSlotIds.map((slotId: number) => ({
-            storeSlot: {
-              connect: { id: slotId },
-            },
-          })),
+    await prisma.collectionUser.upsert({
+      where: {
+        collectionId_userId: {
+          collectionId: parsedCollectionId,
+          userId: user.id,
         },
       },
-      include: {
-        user: {
-          select: {
-            id: true,
-            lastName: true,
-            firstName: true,
-            email: true,
-            phoneNumber: true,
-          },
-        },
-        collection: true,
-        storeSlots: {
-          include: {
-            storeSlot: true,
-          },
-        },
+      update: {},
+      create: {
+        collectionId: parsedCollectionId,
+        userId: user.id,
       },
     });
 
-    res.status(201).json(userAnswer);
+    const selections = dedupeSelections(
+      buildSelections(
+        normalizedSlotIds,
+        normalizedZoneIds,
+        normalizedSlotId,
+        normalizedZoneId,
+      ),
+    );
+
+    const createdAnswers = await prisma.$transaction(
+      selections.map((selection) =>
+        prisma.userAnswer.create({
+          data: {
+            userId: user.id,
+            collectionId: parsedCollectionId,
+            slotId: selection.slotId,
+            zoneId: selection.zoneId,
+          },
+          include: userAnswerInclude,
+        }),
+      ),
+    );
+
+    if (createdAnswers.length === 1) {
+      return res.status(201).json(createdAnswers[0]);
+    }
+
+    return res.status(201).json({
+      count: createdAnswers.length,
+      items: createdAnswers,
+    });
   } catch (error) {
     console.error(error);
-    res.status(400).json({ error: "Failed to create user answer" });
+    return res.status(400).json({ error: "Failed to create user answer" });
   }
 };
 
 export const updateUserAnswer = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { lastName, firstName, phoneNumber, email, storeSlotIds } = req.body;
+    const {
+      lastName,
+      firstName,
+      birthdate,
+      codePostal,
+      phoneNumber,
+      email,
+      slotId,
+      zoneId,
+      slotIds,
+      zoneIds,
+    } = req.body;
 
-    const normalizedStoreSlotIds = normalizeStoreSlotIds(storeSlotIds);
-
-    // Validate required fields
-    if (!lastName || !firstName || !phoneNumber) {
+    if (!lastName || !firstName || !birthdate || !codePostal || !phoneNumber) {
       return res.status(400).json({
-        error: "lastName, firstName, and phoneNumber are required",
+        error:
+          "lastName, firstName, birthdate, codePostal, and phoneNumber are required",
+      });
+    }
+
+    if (!isValidPhoneNumber(phoneNumber)) {
+      return res.status(400).json({
+        error:
+          "Invalid phoneNumber format. Expected 10 digits, starting with 06 or 07, with no spaces or special characters",
+      });
+    }
+
+    if (!isValidCodePostal(codePostal)) {
+      return res.status(400).json({
+        error: "Invalid codePostal format. Expected exactly 5 digits",
+      });
+    }
+
+    const parsedBirthdate = parseBirthdate(birthdate);
+    if (!parsedBirthdate) {
+      return res.status(400).json({
+        error: "Invalid birthdate format. Expected a valid date",
+      });
+    }
+
+    const username = generateUsername(lastName, firstName);
+    if (!username) {
+      return res.status(400).json({
+        error:
+          "Unable to generate username from lastName and firstName. Use latin letters a-z",
       });
     }
 
     const userAnswerId = Array.isArray(id)
-      ? Number.parseInt(id[0])
-      : Number.parseInt(id);
+      ? Number.parseInt(id[0], 10)
+      : Number.parseInt(id, 10);
 
-    // Get the UserAnswer to find its user
     const existingAnswer = await prisma.userAnswer.findUnique({
       where: { id: userAnswerId },
       include: { user: true },
@@ -170,6 +412,56 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
 
     if (!existingAnswer) {
       return res.status(404).json({ error: "UserAnswer not found" });
+    }
+
+    if (Array.isArray(slotIds) && normalizeIds(slotIds).length > 1) {
+      return res.status(400).json({
+        error:
+          "Use slotId (single value) when updating one user answer. Create multiple user answers for multiple slots.",
+      });
+    }
+
+    if (Array.isArray(zoneIds) && normalizeIds(zoneIds).length > 1) {
+      return res.status(400).json({
+        error:
+          "Use zoneId (single value) when updating one user answer. Create multiple user answers for multiple zones.",
+      });
+    }
+
+    const fallbackSlotId = normalizeIds(slotIds)[0];
+    const fallbackZoneId = normalizeIds(zoneIds)[0];
+
+    const normalizedSlotId =
+      normalizeOptionalId(slotId) ??
+      (fallbackSlotId === undefined ? undefined : fallbackSlotId);
+    const normalizedZoneId =
+      normalizeOptionalId(zoneId) ??
+      (fallbackZoneId === undefined ? undefined : fallbackZoneId);
+
+    if (normalizedSlotId !== undefined && normalizedSlotId !== null) {
+      const invalidSlotIds = await findInvalidSlotIdsForCollection(
+        [normalizedSlotId],
+        existingAnswer.collectionId,
+      );
+      if (invalidSlotIds.length > 0) {
+        return res.status(400).json({
+          error: "slotId is invalid or does not belong to this collection",
+          invalidSlotIds,
+        });
+      }
+    }
+
+    if (normalizedZoneId !== undefined && normalizedZoneId !== null) {
+      const invalidZoneIds = await findInvalidZoneIdsForCollection(
+        [normalizedZoneId],
+        existingAnswer.collectionId,
+      );
+      if (invalidZoneIds.length > 0) {
+        return res.status(400).json({
+          error: "zoneId is invalid or does not belong to this collection",
+          invalidZoneIds,
+        });
+      }
     }
 
     const conflictingPhone = await prisma.user.findFirst({
@@ -202,65 +494,35 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
       }
     }
 
-    const missingStoreSlotIds = await findMissingStoreSlotIds(
-      normalizedStoreSlotIds,
-    );
-    if (missingStoreSlotIds.length > 0) {
-      return res.status(400).json({
-        error: "Some storeSlotIds do not exist",
-        missingStoreSlotIds,
-      });
-    }
-
     await prisma.$transaction(async (tx) => {
-      // Keep the linked user profile in sync with latest answer payload.
       await tx.user.update({
         where: { id: existingAnswer.user.id },
         data: {
           lastName,
           firstName,
+          username,
+          birthdate: parsedBirthdate,
+          codePostal,
           phoneNumber,
           email: email || null,
         },
       });
 
-      await tx.userAnswerSlot.deleteMany({
-        where: { userAnswerId },
+      await tx.userAnswer.update({
+        where: { id: userAnswerId },
+        data: {
+          ...(normalizedSlotId !== undefined && { slotId: normalizedSlotId }),
+          ...(normalizedZoneId !== undefined && { zoneId: normalizedZoneId }),
+        },
       });
-
-      if (normalizedStoreSlotIds.length > 0) {
-        await tx.userAnswerSlot.createMany({
-          data: normalizedStoreSlotIds.map((slotId: number) => ({
-            userAnswerId,
-            storeSlotId: slotId,
-          })),
-        });
-      }
     });
 
-    // Fetch updated UserAnswer
     const updatedAnswer = await prisma.userAnswer.findUnique({
       where: { id: userAnswerId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            lastName: true,
-            firstName: true,
-            email: true,
-            phoneNumber: true,
-          },
-        },
-        collection: true,
-        storeSlots: {
-          include: {
-            storeSlot: true,
-          },
-        },
-      },
+      include: userAnswerInclude,
     });
 
-    res.json(updatedAnswer);
+    return res.json(updatedAnswer);
   } catch (error) {
     console.error(error);
 
@@ -273,7 +535,7 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
       });
     }
 
-    res.status(400).json({ error: "Failed to update user answer" });
+    return res.status(400).json({ error: "Failed to update user answer" });
   }
 };
 
@@ -284,77 +546,51 @@ export const getUserAnswerByCollectionId = async (
   try {
     const { collectionId } = req.params;
     const id = Array.isArray(collectionId) ? collectionId[0] : collectionId;
+
     const answers = await prisma.userAnswer.findMany({
-      where: { collecteId: Number.parseInt(id) },
-      include: {
-        user: {
-          select: {
-            id: true,
-            lastName: true,
-            firstName: true,
-            email: true,
-            phoneNumber: true,
-          },
-        },
-        collection: true,
-        storeSlots: {
-          include: {
-            storeSlot: true,
-          },
-        },
-      },
+      where: { collectionId: Number.parseInt(id, 10) },
+      include: userAnswerInclude,
     });
-    res.json(answers);
+
+    return res.json(answers);
   } catch (error) {
-    res.status(400).json({ error: "Failed to fetch user answers" });
+    return res.status(400).json({ error: "Failed to fetch user answers" });
   }
 };
 
 export const getUserAnswerById = async (req: Request, res: Response) => {
   try {
     const id = Array.isArray(req.params.id)
-      ? Number.parseInt(req.params.id[0])
-      : Number.parseInt(req.params.id);
+      ? Number.parseInt(req.params.id[0], 10)
+      : Number.parseInt(req.params.id, 10);
+
     const answer = await prisma.userAnswer.findUnique({
       where: { id },
-      include: {
-        user: {
-          select: {
-            id: true,
-            lastName: true,
-            firstName: true,
-            email: true,
-            phoneNumber: true,
-          },
-        },
-        collection: true,
-        storeSlots: {
-          include: {
-            storeSlot: true,
-          },
-        },
-      },
+      include: userAnswerInclude,
     });
 
     if (!answer) {
       return res.status(404).json({ error: "UserAnswer not found" });
     }
-    res.json(answer);
+
+    return res.json(answer);
   } catch (error) {
-    res.status(400).json({ error: "Failed to fetch user answer" });
+    return res.status(400).json({ error: "Failed to fetch user answer" });
   }
 };
 
 export const deleteUserAnswer = async (req: Request, res: Response) => {
   try {
     const id = Array.isArray(req.params.id)
-      ? Number.parseInt(req.params.id[0])
-      : Number.parseInt(req.params.id);
+      ? Number.parseInt(req.params.id[0], 10)
+      : Number.parseInt(req.params.id, 10);
+
     await prisma.userAnswer.delete({
       where: { id },
     });
-    res.status(204).send();
+
+    return res.status(204).send();
   } catch (error) {
-    res.status(400).json({ error: "Failed to delete user answer" });
+    return res.status(400).json({ error: "Failed to delete user answer" });
   }
 };

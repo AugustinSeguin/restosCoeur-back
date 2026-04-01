@@ -7,7 +7,8 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "title": "Zone Nord"
+  "title": "Zone Nord",
+  "collectionIds": [1]
 }
 
 ### Get All Zones

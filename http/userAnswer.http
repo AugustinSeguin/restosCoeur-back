@@ -8,10 +8,13 @@ Content-Type: application/json
 {
   "firstName": "Alice",
   "lastName": "Martin",
-  "phoneNumber": "+33612345678",
+  "birthdate": "1998-04-22",
+  "codePostal": "33000",
+  "phoneNumber": "0612345678",
   "email": "alice.martin@example.com",
   "collecteId": 1,
-  "storeSlotIds": [1, 2]
+  "slotIds": [1, 2],
+  "zoneIds": [1]
 }
 
 ### Create UserAnswer with existing user
@@ -21,22 +24,28 @@ Content-Type: application/json
 {
   "firstName": "Bob",
   "lastName": "Dupont",
+  "birthdate": "1992-01-10",
+  "codePostal": "13001",
   "phoneNumber": "0612345678",
   "email": "admin@example.com",
   "collecteId": 1,
-  "storeSlotIds": [3]
+  "slotIds": [3],
+  "zoneIds": [1, 2]
 }
 
-### Update UserAnswer (change slots and profile)
+### Update UserAnswer (change one slot/zone and profile)
 PUT {{api_url}}/user-answers/1
 Content-Type: application/json
 
 {
   "firstName": "Alice",
   "lastName": "Martin",
-  "phoneNumber": "+33612345678",
+  "birthdate": "1998-04-22",
+  "codePostal": "33100",
+  "phoneNumber": "0612345678",
   "email": "alice.martin@example.com",
-  "storeSlotIds": [2, 3]
+  "slotId": 2,
+  "zoneId": 1
 }
 
 ### Get UserAnswer by ID

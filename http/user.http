@@ -9,12 +9,15 @@ Authorization: Bearer {{token}}
 {
   "lastName": "Dupont",
   "firstName": "Jean",
+  "birthdate": "1990-05-14",
+  "codePostal": "75011",
   "email": "admin@example.com",
   "phoneNumber": "0612345678",
   "isActive": true,
   "isAdmin": true,
   "type": "permanent",
-  "password": "password123"
+  "password": "password123",
+  "collectionIds": [1]
 }
 
 ### Create Admin User
@@ -25,6 +28,8 @@ Authorization: Bearer {{token}}
 {
   "lastName": "Admin",
   "firstName": "Super",
+  "birthdate": "1985-09-30",
+  "codePostal": "69003",
   "email": "admin@example.com",
   "phoneNumber": "0698765432",
   "password": "password123",
@@ -49,11 +54,14 @@ Authorization: Bearer {{token}}
 {
   "lastName": "Dupont",
   "firstName": "Jean-Pierre",
+  "birthdate": "1990-05-14",
+  "codePostal": "75012",
   "email": "jean.dupont@example.com",
   "phoneNumber": "0612345678",
   "isActive": true,
   "isAdmin": true,
-  "type": "occasional"
+  "type": "occasional",
+  "collectionIds": [2, 3]
 }
 
 ### Delete User

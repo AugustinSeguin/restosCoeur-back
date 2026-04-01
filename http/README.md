@@ -40,7 +40,7 @@ Chaque fichier `.http` contient deux variables au début :
 | [zone.http](./zone.http)             | CRUD des Zones               |
 | [collection.http](./collection.http) | CRUD des Collections         |
 | [store.http](./store.http)           | CRUD des Magasins            |
-| [storeSlot.http](./storeSlot.http)   | CRUD des Créneaux            |
+| [slot.http](./slot.http)             | CRUD des Créneaux            |
 | [user.http](./user.http)             | CRUD des Utilisateurs        |
 | [assignment.http](./assignment.http) | CRUD des Affectations        |
 
@@ -63,7 +63,7 @@ Chaque fichier `.http` contient deux variables au début :
    - [store.http](./store.http) → "Create Store" (avec `zoneId: 1`)
 
 6. ✅ **Créer un créneau** :
-   - [storeSlot.http](./storeSlot.http) → "Create Store Slot" (avec `storeId: 1`)
+   - [slot.http](./slot.http) → "Create Slot" (avec `collectionId: 1`)
 
 7. ✅ **Créer une affectation** :
    - [assignment.http](./assignment.http) → "Create Assignment"

@@ -1,8 +1,8 @@
 @api_url = http://localhost:3000/api
 @token = 
-@storeId = 1
+@collectionId = 1
 
-### Create Store Slot
+### Create Slot
 POST {{api_url}}/slots
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -10,18 +10,18 @@ Authorization: Bearer {{token}}
 {
   "startAt": "2026-03-15T09:00:00Z",
   "endAt": "2026-03-15T12:00:00Z",
-  "storeId": {{storeId}}
+  "collectionId": {{collectionId}}
 }
 
-### Get All Store Slots
+### Get All Slots
 GET {{api_url}}/slots
 Authorization: Bearer {{token}}
 
-### Get Store Slot by ID
+### Get Slot by ID
 GET {{api_url}}/slots/1
 Authorization: Bearer {{token}}
 
-### Update Store Slot
+### Update Slot
 PUT {{api_url}}/slots/1
 Content-Type: application/json
 Authorization: Bearer {{token}}
@@ -29,9 +29,9 @@ Authorization: Bearer {{token}}
 {
   "startAt": "2026-03-15T10:00:00Z",
   "endAt": "2026-03-15T13:00:00Z",
-  "storeId": {{storeId}}
+  "collectionId": {{collectionId}}
 }
 
-### Delete Store Slot
+### Delete Slot
 DELETE {{api_url}}/slots/1
 Authorization: Bearer {{token}}

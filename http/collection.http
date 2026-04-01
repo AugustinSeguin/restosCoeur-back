@@ -20,6 +20,10 @@ Authorization: Bearer {{token}}
 GET {{api_url}}/collections/1
 Authorization: Bearer {{token}}
 
+### Get Collection with All Details (users, userAnswers, assignments, zones, stores, slots)
+GET {{api_url}}/collections/1
+Authorization: Bearer {{token}}
+
 ### Update Collection
 PUT {{api_url}}/collections/1
 Content-Type: application/json
@@ -28,5 +32,6 @@ Authorization: Bearer {{token}}
 {
   "title": "Collecte Mars 2026 - Updated",
   "isActive": true,
-  "formUrl": "https://forms.example.com/collecte1-updated"
+  "formUrl": "https://forms.example.com/collecte1-updated",
+  "userIds": [2, 3]
 }

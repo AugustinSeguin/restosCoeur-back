@@ -1,40 +1,59 @@
 export interface UserAnswer {
   id: number;
   userId: number;
-  collecteId: number;
+  collectionId: number;
+  slotId: number | null;
+  zoneId: number | null;
   createdAt: Date;
   updatedAt: Date;
   user?: {
     id: number;
     lastName: string;
     firstName: string;
+    username: string;
+    birthdate: Date;
+    codePostal: string;
     email: string | null;
     phoneNumber: string;
   };
-  collection?: {
-    id: number;
-    title: string;
+  collectionUser?: {
+    collectionId: number;
+    userId: number;
+    collection: {
+      id: number;
+      title: string;
+    };
   };
-  storeSlots?: Array<{
+  slot?: {
     id: number;
     startAt: Date;
     endAt: Date;
-  }>;
+  };
+  zone?: {
+    id: number;
+    title: string;
+  };
 }
 
 export interface CreateUserAnswerDto {
   lastName: string;
   firstName: string;
+  birthdate: Date;
+  codePostal: string;
   phoneNumber: string;
   email?: string | null;
-  collecteId: number;
-  storeSlotIds?: number[];
+  collectionId: number;
+  slotId?: number | null;
+  zoneId?: number | null;
 }
 
 export interface UpdateUserAnswerDto {
   lastName: string;
   firstName: string;
+  birthdate: Date;
+  codePostal: string;
   phoneNumber: string;
   email?: string | null;
-  storeSlotIds?: number[];
+  slotId?: number | null;
+  zoneId?: number | null;
 }

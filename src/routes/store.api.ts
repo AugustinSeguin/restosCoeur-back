@@ -1,13 +1,41 @@
 import { Request, Response } from "express";
 import prisma from "@/libs/prisma";
 
+const isValidTime = (value: unknown): value is string => {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+};
+
 export const createStore = async (req: Request, res: Response) => {
   try {
-    const { title, zoneId, minVolunteers, idealVolunteers } = req.body;
+    const {
+      title,
+      zoneId,
+      openingTime,
+      closingTime,
+      isOpenSunday,
+      minVolunteers,
+      idealVolunteers,
+    } = req.body;
+
+    if (!isValidTime(openingTime) || !isValidTime(closingTime)) {
+      return res.status(400).json({
+        error: "Invalid openingTime/closingTime format. Expected HH:mm",
+      });
+    }
+
+    if (typeof isOpenSunday !== "boolean") {
+      return res.status(400).json({
+        error: "isOpenSunday must be a boolean",
+      });
+    }
+
     const store = await prisma.store.create({
       data: {
         title,
         zoneId,
+        openingTime,
+        closingTime,
+        isOpenSunday,
         minVolunteers,
         idealVolunteers,
       },
@@ -21,10 +49,39 @@ export const createStore = async (req: Request, res: Response) => {
 export const updateStore = async (req: Request, res: Response) => {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { title, zoneId, minVolunteers, idealVolunteers } = req.body;
+    const {
+      title,
+      zoneId,
+      openingTime,
+      closingTime,
+      isOpenSunday,
+      minVolunteers,
+      idealVolunteers,
+    } = req.body;
+
+    if (!isValidTime(openingTime) || !isValidTime(closingTime)) {
+      return res.status(400).json({
+        error: "Invalid openingTime/closingTime format. Expected HH:mm",
+      });
+    }
+
+    if (typeof isOpenSunday !== "boolean") {
+      return res.status(400).json({
+        error: "isOpenSunday must be a boolean",
+      });
+    }
+
     const store = await prisma.store.update({
       where: { id: Number.parseInt(id) },
-      data: { title, zoneId, minVolunteers, idealVolunteers },
+      data: {
+        title,
+        zoneId,
+        openingTime,
+        closingTime,
+        isOpenSunday,
+        minVolunteers,
+        idealVolunteers,
+      },
     });
     res.json(store);
   } catch (error) {
@@ -49,7 +106,7 @@ export const getStoreById = async (req: Request, res: Response) => {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const store = await prisma.store.findUnique({
       where: { id: Number.parseInt(id) },
-      include: { zone: true, slots: true },
+      include: { zone: true },
     });
     if (!store) return res.status(404).json({ error: "Store not found" });
     res.json(store);
@@ -61,7 +118,7 @@ export const getStoreById = async (req: Request, res: Response) => {
 export const getAllStores = async (req: Request, res: Response) => {
   try {
     const stores = await prisma.store.findMany({
-      include: { zone: true, slots: true },
+      include: { zone: true },
     });
     res.json(stores);
   } catch (error) {

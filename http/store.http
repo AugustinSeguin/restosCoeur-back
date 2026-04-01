@@ -9,6 +9,9 @@ Authorization: Bearer {{token}}
 {
   "title": "Magasin Paris 15",
   "zoneId": 1,
+  "openingTime": "08:30",
+  "closingTime": "19:00",
+  "isOpenSunday": false,
   "minVolunteers": 2,
   "idealVolunteers": 5
 }
@@ -29,6 +32,9 @@ Authorization: Bearer {{token}}
 {
   "title": "Magasin Paris 15 - Updated",
   "zoneId": 1,
+  "openingTime": "09:00",
+  "closingTime": "18:30",
+  "isOpenSunday": true,
   "minVolunteers": 3,
   "idealVolunteers": 7
 }

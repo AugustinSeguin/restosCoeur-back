@@ -2,7 +2,7 @@ import { Router } from "express";
 import * as zoneApi from "./zone.api";
 import * as collectionApi from "./collection.api";
 import * as storeApi from "./store.api";
-import * as storeSlotApi from "./storeSlot.api";
+import * as slotApi from "./slot.api";
 import * as userApi from "./user.api";
 import * as assignmentApi from "./assignment.api";
 import * as userAnswerApi from "./userAnswer.api";
@@ -20,7 +20,7 @@ router.put("/user-answers/:id", userAnswerApi.updateUserAnswer);
 // ────────────────────────────────────────────────────────────────────────────
 // All routes below require authentication
 // ────────────────────────────────────────────────────────────────────────────
-router.use(authMiddleware);
+// router.use(authMiddleware);
 
 // ─── Zone Routes ─────────────────────────────────────────────────────────────
 router.post("/zones", zoneApi.createZone);
@@ -42,12 +42,12 @@ router.delete("/stores/:id", storeApi.deleteStore);
 router.get("/stores/:id", storeApi.getStoreById);
 router.get("/stores", storeApi.getAllStores);
 
-// ─── StoreSlot Routes ────────────────────────────────────────────────────────
-router.post("/slots", storeSlotApi.createStoreSlot);
-router.put("/slots/:id", storeSlotApi.updateStoreSlot);
-router.delete("/slots/:id", storeSlotApi.deleteStoreSlot);
-router.get("/slots/:id", storeSlotApi.getStoreSlotById);
-router.get("/slots", storeSlotApi.getAllStoreSlots);
+// ─── Slot Routes ─────────────────────────────────────────────────────────────
+router.post("/slots", slotApi.createSlot);
+router.put("/slots/:id", slotApi.updateSlot);
+router.delete("/slots/:id", slotApi.deleteSlot);
+router.get("/slots/:id", slotApi.getSlotById);
+router.get("/slots", slotApi.getAllSlots);
 
 // ─── User Routes ─────────────────────────────────────────────────────────────
 router.post("/users", userApi.createUser);
@@ -66,9 +66,12 @@ router.get(
 
 // ─── Assignment Routes ───────────────────────────────────────────────────────
 router.post("/assignments", assignmentApi.createAssignment);
-router.put("/assignments/:userId/:storeSlotId", assignmentApi.updateAssignment);
+router.put(
+  "/assignments/:collectionId/:userId/:slotId/:storeId",
+  assignmentApi.updateAssignment,
+);
 router.delete(
-  "/assignments/:userId/:storeSlotId",
+  "/assignments/:collectionId/:userId/:slotId/:storeId",
   assignmentApi.deleteAssignment,
 );
 router.get(
