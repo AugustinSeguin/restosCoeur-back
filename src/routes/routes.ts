@@ -17,10 +17,13 @@ router.post("/auth/logout", authApi.logout);
 router.post("/user-answers", userAnswerApi.createUserAnswer);
 router.put("/user-answers/:id", userAnswerApi.updateUserAnswer);
 
+// form 
+router.get("/collections/:id", collectionApi.getCollectionById);
+
 // ────────────────────────────────────────────────────────────────────────────
 // All routes below require authentication
 // ────────────────────────────────────────────────────────────────────────────
-// router.use(authMiddleware);
+router.use(authMiddleware);
 
 // ─── Zone Routes ─────────────────────────────────────────────────────────────
 router.post("/zones", zoneApi.createZone);
@@ -32,7 +35,7 @@ router.get("/zones", zoneApi.getAllZones);
 // ─── Collection Routes ────────────────────────────────────────────────────────
 router.post("/collections", collectionApi.createCollection);
 router.put("/collections/:id", collectionApi.updateCollection);
-router.get("/collections/:id", collectionApi.getCollectionById);
+router.get("/collectionsBoard/:id", collectionApi.getCollectionBoardById);
 router.get("/collections", collectionApi.getAllCollections);
 
 // ─── Store Routes ────────────────────────────────────────────────────────────
@@ -67,11 +70,11 @@ router.get(
 // ─── Assignment Routes ───────────────────────────────────────────────────────
 router.post("/assignments", assignmentApi.createAssignment);
 router.put(
-  "/assignments/:collectionId/:userId/:slotId/:storeId",
+  "/assignments/:userId/:slotId/:storeId",
   assignmentApi.updateAssignment,
 );
 router.delete(
-  "/assignments/:collectionId/:userId/:slotId/:storeId",
+  "/assignments/:userId/:slotId/:storeId",
   assignmentApi.deleteAssignment,
 );
 router.get(

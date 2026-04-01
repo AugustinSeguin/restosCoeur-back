@@ -322,27 +322,48 @@ export const createUserAnswer = async (req: Request, res: Response) => {
       ),
     );
 
-    const createdAnswers = await prisma.$transaction(
-      selections.map((selection) =>
-        prisma.userAnswer.create({
-          data: {
+    const existingAnswers = await prisma.userAnswer.findMany({
+      where: {
+        userId: user.id,
+        collectionId: parsedCollectionId,
+      },
+      select: { id: true },
+    });
+
+    const savedAnswers = await prisma.$transaction(async (tx) => {
+      if (existingAnswers.length > 0) {
+        await tx.userAnswer.deleteMany({
+          where: {
             userId: user.id,
             collectionId: parsedCollectionId,
-            slotId: selection.slotId,
-            zoneId: selection.zoneId,
           },
-          include: userAnswerInclude,
-        }),
-      ),
-    );
+        });
+      }
 
-    if (createdAnswers.length === 1) {
-      return res.status(201).json(createdAnswers[0]);
+      return Promise.all(
+        selections.map((selection) =>
+          tx.userAnswer.create({
+            data: {
+              userId: user.id,
+              collectionId: parsedCollectionId,
+              slotId: selection.slotId,
+              zoneId: selection.zoneId,
+            },
+            include: userAnswerInclude,
+          }),
+        ),
+      );
+    });
+
+    const statusCode = existingAnswers.length > 0 ? 200 : 201;
+
+    if (savedAnswers.length === 1) {
+      return res.status(statusCode).json(savedAnswers[0]);
     }
 
-    return res.status(201).json({
-      count: createdAnswers.length,
-      items: createdAnswers,
+    return res.status(statusCode).json({
+      count: savedAnswers.length,
+      items: savedAnswers,
     });
   } catch (error) {
     console.error(error);
@@ -432,11 +453,9 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
     const fallbackZoneId = normalizeIds(zoneIds)[0];
 
     const normalizedSlotId =
-      normalizeOptionalId(slotId) ??
-      (fallbackSlotId === undefined ? undefined : fallbackSlotId);
+      normalizeOptionalId(slotId) ?? fallbackSlotId ?? undefined;
     const normalizedZoneId =
-      normalizeOptionalId(zoneId) ??
-      (fallbackZoneId === undefined ? undefined : fallbackZoneId);
+      normalizeOptionalId(zoneId) ?? fallbackZoneId ?? undefined;
 
     if (normalizedSlotId !== undefined && normalizedSlotId !== null) {
       const invalidSlotIds = await findInvalidSlotIdsForCollection(
@@ -460,36 +479,6 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
         return res.status(400).json({
           error: "zoneId is invalid or does not belong to this collection",
           invalidZoneIds,
-        });
-      }
-    }
-
-    const conflictingPhone = await prisma.user.findFirst({
-      where: {
-        phoneNumber,
-        NOT: { id: existingAnswer.user.id },
-      },
-      select: { id: true },
-    });
-
-    if (conflictingPhone) {
-      return res.status(409).json({
-        error: `Phone number ${phoneNumber} is already used by another user`,
-      });
-    }
-
-    if (email) {
-      const conflictingEmail = await prisma.user.findFirst({
-        where: {
-          email,
-          NOT: { id: existingAnswer.user.id },
-        },
-        select: { id: true },
-      });
-
-      if (conflictingEmail) {
-        return res.status(409).json({
-          error: `Email ${email} is already used by another user`,
         });
       }
     }

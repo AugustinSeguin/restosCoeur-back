@@ -125,6 +125,27 @@ export const updateCollection = async (req: Request, res: Response) => {
 export const getCollectionById = async (req: Request, res: Response) => {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const collection = await prisma.collection.findUnique({
+      where: { id: Number.parseInt(id) },
+      include: {
+        slots: true,
+        zones: {
+          include: {
+            zone: true,
+            },
+          },
+        },
+    });
+    if (!collection) return res.status(404).json({ error: "Collection not found" });
+    res.json(collection);
+  } catch (error) {
+    res.status(400).json({ error: "Failed to fetch collection" });
+  }
+};
+
+export const getCollectionBoardById = async (req: Request, res: Response) => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const collectionId = Number.parseInt(id);
 
     if (!Number.isInteger(collectionId) || collectionId <= 0) {
