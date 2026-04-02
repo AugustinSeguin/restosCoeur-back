@@ -49,8 +49,8 @@ model CollectionZone {
 model Store {
   id              Int          @id @default(autoincrement())
   title           String
-  zoneId          Int
-  zone            Zone         @relation(fields: [zoneId], references: [id])
+  zoneId          Int?
+  zone            Zone?        @relation(fields: [zoneId], references: [id], onDelete: SetNull)
   openingTime     String
   closingTime     String
   isOpenSunday    Boolean      @default(false)

@@ -27,41 +27,52 @@ const findInvalidCollectionIds = async (
   return collectionIds.filter((id) => !existingIds.has(id));
 };
 
+const findInvalidStoreIds = async (storeIds: number[]): Promise<number[]> => {
+  if (storeIds.length === 0) return [];
+
+  const existingStores = await prisma.store.findMany({
+    where: { id: { in: storeIds } },
+    select: { id: true },
+  });
+
+  const existingIds = new Set(existingStores.map((store) => store.id));
+  return storeIds.filter((id) => !existingIds.has(id));
+};
+
 export const createZone = async (req: Request, res: Response) => {
   try {
-    const { title, collectionIds } = req.body;
-    const normalizedCollectionIds = normalizeIds(collectionIds);
+    const { title, storeIds } = req.body;
+    const normalizedStoreIds = normalizeIds(storeIds);
 
-    const invalidCollectionIds = await findInvalidCollectionIds(
-      normalizedCollectionIds,
-    );
-    if (invalidCollectionIds.length > 0) {
+    const invalidStoreIds = await findInvalidStoreIds(normalizedStoreIds);
+    if (invalidStoreIds.length > 0) {
       return res.status(400).json({
-        error: "Some collectionIds are invalid or do not exist",
-        invalidCollectionIds,
+        error: "Some storeIds are invalid or do not exist",
+        invalidStoreIds,
       });
     }
 
     const zone = await prisma.zone.create({
       data: {
         title,
-        collections: {
-          create: normalizedCollectionIds.map((collectionId) => ({
-            collection: {
-              connect: { id: collectionId },
-            },
-          })),
-        },
-      },
-      include: {
-        collections: {
-          include: {
-            collection: true,
-          },
-        },
       },
     });
-    res.status(201).json(zone);
+
+    if (normalizedStoreIds.length > 0) {
+      await prisma.store.updateMany({
+        where: { id: { in: normalizedStoreIds } },
+        data: { zoneId: zone.id },
+      });
+    }
+
+    const createdZone = await prisma.zone.findUnique({
+      where: { id: zone.id },
+      include: {
+        stores: true,
+      },
+    });
+
+    res.status(201).json(createdZone);
   } catch (error) {
     res.status(400).json({ error: "Failed to create zone" });
   }
@@ -70,35 +81,48 @@ export const createZone = async (req: Request, res: Response) => {
 export const updateZone = async (req: Request, res: Response) => {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { title, collectionIds } = req.body;
-    const normalizedCollectionIds = normalizeIds(collectionIds);
+    const zoneId = Number.parseInt(id, 10);
 
-    const invalidCollectionIds = await findInvalidCollectionIds(
-      normalizedCollectionIds,
-    );
-    if (invalidCollectionIds.length > 0) {
+    if (!Number.isInteger(zoneId) || zoneId <= 0) {
+      return res.status(400).json({ error: "Invalid zone id" });
+    }
+
+    const { title, storeIds } = req.body;
+    const normalizedStoreIds = normalizeIds(storeIds);
+
+    const invalidStoreIds = await findInvalidStoreIds(normalizedStoreIds);
+    if (invalidStoreIds.length > 0) {
       return res.status(400).json({
-        error: "Some collectionIds are invalid or do not exist",
-        invalidCollectionIds,
+        error: "Some storeIds are invalid or do not exist",
+        invalidStoreIds,
       });
     }
 
-    const zone = await prisma.zone.update({
-      where: { id: Number.parseInt(id) },
+    await prisma.zone.update({
+      where: { id: zoneId },
       data: {
         title,
-        ...(Array.isArray(collectionIds) && {
-          collections: {
-            deleteMany: {},
-            create: normalizedCollectionIds.map((collectionId) => ({
-              collection: {
-                connect: { id: collectionId },
-              },
-            })),
-          },
-        }),
       },
+    });
+
+    // Detach all stores from this zone
+    await prisma.store.updateMany({
+      where: { zoneId },
+      data: { zoneId: null },
+    });
+
+    // Attach new stores
+    if (normalizedStoreIds.length > 0) {
+      await prisma.store.updateMany({
+        where: { id: { in: normalizedStoreIds } },
+        data: { zoneId },
+      });
+    }
+
+    const updatedZone = await prisma.zone.findUnique({
+      where: { id: zoneId },
       include: {
+        stores: true,
         collections: {
           include: {
             collection: true,
@@ -106,7 +130,8 @@ export const updateZone = async (req: Request, res: Response) => {
         },
       },
     });
-    res.json(zone);
+
+    res.json(updatedZone);
   } catch (error) {
     res.status(400).json({ error: "Failed to update zone" });
   }
@@ -147,16 +172,7 @@ export const getZoneById = async (req: Request, res: Response) => {
 
 export const getAllZones = async (req: Request, res: Response) => {
   try {
-    const zones = await prisma.zone.findMany({
-      include: {
-        stores: true,
-        collections: {
-          include: {
-            collection: true,
-          },
-        },
-      },
-    });
+    const zones = await prisma.zone.findMany();
     res.json(zones);
   } catch (error) {
     res.status(400).json({ error: "Failed to fetch zones" });

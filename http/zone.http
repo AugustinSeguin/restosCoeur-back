@@ -1,14 +1,23 @@
 @api_url = http://localhost:3000/api
 @token = 
 
-### Create Zone
+### Create Zone (without stores)
+POST {{api_url}}/zones
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "title": "Zone Nord"
+}
+
+### Create Zone (with stores)
 POST {{api_url}}/zones
 Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
   "title": "Zone Nord",
-  "collectionIds": [1]
+  "storeIds": [1, 2, 3]
 }
 
 ### Get All Zones
@@ -25,7 +34,8 @@ Content-Type: application/json
 Authorization: Bearer {{token}}
 
 {
-  "title": "Zone Nord Updated"
+  "title": "Zone Nord Updated",
+  "storeIds": [1, 2]
 }
 
 ### Delete Zone

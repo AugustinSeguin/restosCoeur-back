@@ -117,9 +117,7 @@ export const getStoreById = async (req: Request, res: Response) => {
 
 export const getAllStores = async (req: Request, res: Response) => {
   try {
-    const stores = await prisma.store.findMany({
-      include: { zone: true },
-    });
+    const stores = await prisma.store.findMany();
     res.json(stores);
   } catch (error) {
     res.status(400).json({ error: "Failed to fetch stores" });

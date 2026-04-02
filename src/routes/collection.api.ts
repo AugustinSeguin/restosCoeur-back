@@ -25,50 +25,28 @@ const normalizeIds = (ids: unknown): number[] => {
   return [...new Set(normalized)];
 };
 
-const findInvalidUserIds = async (userIds: number[]): Promise<number[]> => {
-  if (userIds.length === 0) return [];
 
-  const existingUsers = await prisma.user.findMany({
-    where: { id: { in: userIds } },
+const findInvalidZoneIds = async (zoneIds: number[]): Promise<number[]> => {
+  if (zoneIds.length === 0) return [];
+
+  const existingZones = await prisma.zone.findMany({
+    where: { id: { in: zoneIds } },
     select: { id: true },
   });
 
-  const existingIds = new Set(existingUsers.map((user) => user.id));
-  return userIds.filter((id) => !existingIds.has(id));
+  const existingIds = new Set(existingZones.map((zone) => zone.id));
+  return zoneIds.filter((id) => !existingIds.has(id));
 };
 
 export const createCollection = async (req: Request, res: Response) => {
   try {
-    const { title, isActive, formUrl, userIds } = req.body;
-    const normalizedUserIds = normalizeIds(userIds);
-
-    const invalidUserIds = await findInvalidUserIds(normalizedUserIds);
-    if (invalidUserIds.length > 0) {
-      return res.status(400).json({
-        error: "Some userIds are invalid or do not exist",
-        invalidUserIds,
-      });
-    }
+    const { title, isActive, formUrl } = req.body;
 
     const collection = await prisma.collection.create({
       data: {
         title,
         isActive: isActive ?? true,
         formUrl,
-        users: {
-          create: normalizedUserIds.map((userId) => ({
-            user: {
-              connect: { id: userId },
-            },
-          })),
-        },
-      },
-      include: {
-        users: {
-          include: {
-            user: true,
-          },
-        },
       },
     });
     res.status(201).json(collection);
@@ -80,42 +58,145 @@ export const createCollection = async (req: Request, res: Response) => {
 export const updateCollection = async (req: Request, res: Response) => {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const { title, isActive, formUrl, userIds } = req.body;
-    const normalizedUserIds = normalizeIds(userIds);
+    const collectionId = Number.parseInt(id, 10);
 
-    const invalidUserIds = await findInvalidUserIds(normalizedUserIds);
-    if (invalidUserIds.length > 0) {
+    if (!Number.isInteger(collectionId) || collectionId <= 0) {
+      return res.status(400).json({ error: "Invalid collection id" });
+    }
+
+    const { title, isActive, formUrl, zoneIds, slots } = req.body;
+    const normalizedZoneIds = normalizeIds(zoneIds);
+
+    const normalizedSlots = Array.isArray(slots)
+      ? slots.map((slot) => {
+          const slotId =
+            typeof slot?.id === "string"
+              ? Number.parseInt(slot.id, 10)
+              : slot?.id;
+
+          const startAt = new Date(slot?.startAt);
+          const endAt = new Date(slot?.endAt);
+
+          return {
+            id:
+              Number.isInteger(slotId) && slotId > 0
+                ? (slotId as number)
+                : undefined,
+            startAt,
+            endAt,
+          };
+        })
+      : [];
+
+    const invalidZoneIds = await findInvalidZoneIds(normalizedZoneIds);
+    if (invalidZoneIds.length > 0) {
       return res.status(400).json({
-        error: "Some userIds are invalid or do not exist",
-        invalidUserIds,
+        error: "Some zoneIds are invalid or do not exist",
+        invalidZoneIds,
       });
     }
 
-    const collection = await prisma.collection.update({
-      where: { id: Number.parseInt(id) },
-      data: {
-        title,
-        isActive,
-        formUrl,
-        ...(Array.isArray(userIds) && {
-          users: {
-            deleteMany: {},
-            create: normalizedUserIds.map((userId) => ({
-              user: {
-                connect: { id: userId },
-              },
-            })),
+    if (Array.isArray(slots)) {
+      const invalidSlotDates = normalizedSlots.some(
+        (slot) =>
+          Number.isNaN(slot.startAt.getTime()) ||
+          Number.isNaN(slot.endAt.getTime()),
+      );
+
+      if (invalidSlotDates) {
+        return res.status(400).json({
+          error: "Each slot must provide valid startAt and endAt values",
+        });
+      }
+
+      const slotsToUpdate = normalizedSlots
+        .map((slot) => slot.id)
+        .filter((slotId): slotId is number => slotId !== undefined);
+
+      if (slotsToUpdate.length > 0) {
+        const existingSlots = await prisma.slot.findMany({
+          where: {
+            id: { in: slotsToUpdate },
+            collectionId,
           },
-        }),
-      },
-      include: {
-        users: {
-          include: {
-            user: true,
-          },
+          select: { id: true },
+        });
+
+        const existingSlotIds = new Set(existingSlots.map((slot) => slot.id));
+        const invalidSlotIds = slotsToUpdate.filter(
+          (slotId) => !existingSlotIds.has(slotId),
+        );
+
+        if (invalidSlotIds.length > 0) {
+          return res.status(400).json({
+            error:
+              "Some slot ids are invalid or not associated with this collection",
+            invalidSlotIds,
+          });
+        }
+      }
+    }
+
+    const collection = await prisma.$transaction(async (tx) => {
+      await tx.collection.update({
+        where: { id: collectionId },
+        data: {
+          title,
+          isActive,
+          formUrl,
+          ...(Array.isArray(zoneIds) && {
+            zones: {
+              deleteMany: {},
+              create: normalizedZoneIds.map((zoneId) => ({
+                zone: {
+                  connect: { id: zoneId },
+                },
+              })),
+            },
+          }),
         },
-      },
+      });
+
+      if (Array.isArray(slots)) {
+        for (const slot of normalizedSlots) {
+          if (slot.id) {
+            await tx.slot.update({
+              where: { id: slot.id },
+              data: {
+                startAt: slot.startAt,
+                endAt: slot.endAt,
+              },
+            });
+            continue;
+          }
+
+          await tx.slot.create({
+            data: {
+              startAt: slot.startAt,
+              endAt: slot.endAt,
+              collectionId,
+            },
+          });
+        }
+      }
+
+      return tx.collection.findUnique({
+        where: { id: collectionId },
+        include: {
+          zones: {
+            include: {
+              zone: true,
+            },
+          },
+          slots: true,
+        },
+      });
     });
+
+    if (!collection) {
+      return res.status(404).json({ error: "Collection not found" });
+    }
+
     res.json(collection);
   } catch (error) {
     res.status(400).json({ error: "Failed to update collection" });
@@ -132,11 +213,12 @@ export const getCollectionById = async (req: Request, res: Response) => {
         zones: {
           include: {
             zone: true,
-            },
           },
         },
+      },
     });
-    if (!collection) return res.status(404).json({ error: "Collection not found" });
+    if (!collection)
+      return res.status(404).json({ error: "Collection not found" });
     res.json(collection);
   } catch (error) {
     res.status(400).json({ error: "Failed to fetch collection" });
@@ -264,17 +346,7 @@ export const getCollectionBoardById = async (req: Request, res: Response) => {
 
 export const getAllCollections = async (req: Request, res: Response) => {
   try {
-    const collections = await prisma.collection.findMany({
-      include: {
-        zones: true,
-        slots: true,
-        users: {
-          include: {
-            user: true,
-          },
-        },
-      },
-    });
+    const collections = await prisma.collection.findMany();
     res.json(collections);
   } catch (error) {
     res.status(400).json({ error: "Failed to fetch collections" });
