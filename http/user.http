@@ -16,8 +16,7 @@ Authorization: Bearer {{token}}
   "isActive": true,
   "isAdmin": true,
   "type": "permanent",
-  "password": "password123",
-  "collectionIds": [1]
+  "password": "password123"
 }
 
 ### Create Admin User
@@ -46,6 +45,10 @@ Authorization: Bearer {{token}}
 GET {{api_url}}/users/1
 Authorization: Bearer {{token}}
 
+### Get Active Admins
+GET {{api_url}}/users/admins
+Authorization: Bearer {{token}}
+
 ### Update User
 PUT {{api_url}}/users/1
 Content-Type: application/json
@@ -56,12 +59,12 @@ Authorization: Bearer {{token}}
   "firstName": "Jean-Pierre",
   "birthdate": "1990-05-14",
   "codePostal": "75012",
-  "email": "jean.dupont@example.com",
+  "email": "admin@example.com",
   "phoneNumber": "0612345678",
   "isActive": true,
   "isAdmin": true,
   "type": "occasional",
-  "collectionIds": [2, 3]
+  "password": "password123",
 }
 
 ### Delete User

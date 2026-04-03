@@ -9,80 +9,60 @@ export const createAssignment = async (req: Request, res: Response) => {
       include: { user: true, slot: true, store: true, collection: true },
     });
     res.status(201).json(assignment);
-  } catch (error) {
+  } catch {
     res.status(400).json({ error: "Failed to create assignment" });
   }
 };
 
 export const updateAssignment = async (req: Request, res: Response) => {
   try {
-    const collectionId = Array.isArray(req.params.collectionId)
-      ? req.params.collectionId[0]
-      : req.params.collectionId;
-    const userId = Array.isArray(req.params.userId)
-      ? req.params.userId[0]
-      : req.params.userId;
-    const slotId = Array.isArray(req.params.slotId)
-      ? req.params.slotId[0]
-      : req.params.slotId;
-    const storeId = Array.isArray(req.params.storeId)
-      ? req.params.storeId[0]
-      : req.params.storeId;
-    const { newUserId, newSlotId, newStoreId, newCollectionId } = req.body;
+    const { userId, slotId, storeId, collectionId, newStoreId } = req.body;
 
-    // Delete old, create new
-    await prisma.assignment.delete({
-      where: {
-        userId_slotId_storeId_collectionId: {
-          userId: Number.parseInt(userId),
-          slotId: Number.parseInt(slotId),
-          storeId: Number.parseInt(storeId),
-          collectionId: Number.parseInt(collectionId),
+    const assignment = await prisma.$transaction(async (tx) => {
+      await tx.assignment.delete({
+        where: {
+          userId_slotId_storeId_collectionId: {
+            userId: Number(userId),
+            slotId: Number(slotId),
+            storeId: Number(storeId),
+            collectionId: Number(collectionId),
+          },
         },
-      },
+      });
+
+      return tx.assignment.create({
+        data: {
+          userId: Number(userId),
+          slotId: Number(slotId),
+          storeId: Number(newStoreId),
+          collectionId: Number(collectionId),
+        },
+        include: { user: true, slot: true, store: true, collection: true },
+      });
     });
 
-    const assignment = await prisma.assignment.create({
-      data: {
-        userId: newUserId,
-        slotId: newSlotId,
-        storeId: newStoreId,
-        collectionId: newCollectionId,
-      },
-      include: { user: true, slot: true, store: true, collection: true },
-    });
     res.json(assignment);
-  } catch (error) {
+  } catch {
     res.status(400).json({ error: "Failed to update assignment" });
   }
 };
 
 export const deleteAssignment = async (req: Request, res: Response) => {
   try {
-    const collectionId = Array.isArray(req.params.collectionId)
-      ? req.params.collectionId[0]
-      : req.params.collectionId;
-    const userId = Array.isArray(req.params.userId)
-      ? req.params.userId[0]
-      : req.params.userId;
-    const slotId = Array.isArray(req.params.slotId)
-      ? req.params.slotId[0]
-      : req.params.slotId;
-    const storeId = Array.isArray(req.params.storeId)
-      ? req.params.storeId[0]
-      : req.params.storeId;
+    const { userId, slotId, storeId, collectionId } = req.body;
+
     await prisma.assignment.delete({
       where: {
         userId_slotId_storeId_collectionId: {
-          userId: Number.parseInt(userId),
-          slotId: Number.parseInt(slotId),
-          storeId: Number.parseInt(storeId),
-          collectionId: Number.parseInt(collectionId),
+          userId: Number(userId),
+          slotId: Number(slotId),
+          storeId: Number(storeId),
+          collectionId: Number(collectionId),
         },
       },
     });
     res.status(204).send();
-  } catch (error) {
+  } catch {
     res.status(400).json({ error: "Failed to delete assignment" });
   }
 };
@@ -101,7 +81,7 @@ export const getAssignmentsByCollectionId = async (
       include: { user: true, slot: true, store: true, collection: true },
     });
     res.json(assignments);
-  } catch (error) {
+  } catch {
     res.status(400).json({ error: "Failed to fetch assignments" });
   }
 };

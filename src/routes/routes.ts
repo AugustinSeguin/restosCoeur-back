@@ -17,7 +17,7 @@ router.post("/auth/logout", authApi.logout);
 router.post("/user-answers", userAnswerApi.createUserAnswer);
 router.put("/user-answers/:id", userAnswerApi.updateUserAnswer);
 
-// form 
+// form
 router.get("/collections/:id", collectionApi.getCollectionById);
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -56,6 +56,7 @@ router.get("/slots", slotApi.getAllSlots);
 router.post("/users", userApi.createUser);
 router.put("/users/:id", userApi.updateUser);
 router.delete("/users/:id", userApi.deleteUser);
+router.get("/users/admins", userApi.getAdmins);
 router.get("/users/:id", userApi.getUserById);
 router.get("/users", userApi.getAllUsers);
 
@@ -69,14 +70,8 @@ router.get(
 
 // ─── Assignment Routes ───────────────────────────────────────────────────────
 router.post("/assignments", assignmentApi.createAssignment);
-router.put(
-  "/assignments/:userId/:slotId/:storeId",
-  assignmentApi.updateAssignment,
-);
-router.delete(
-  "/assignments/:userId/:slotId/:storeId",
-  assignmentApi.deleteAssignment,
-);
+router.put("/assignments", assignmentApi.updateAssignment);
+router.delete("/assignments", assignmentApi.deleteAssignment);
 router.get(
   "/collections/:collectionId/assignments",
   assignmentApi.getAssignmentsByCollectionId,

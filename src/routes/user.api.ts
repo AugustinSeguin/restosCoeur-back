@@ -315,18 +315,24 @@ export const getUserById = async (req: Request, res: Response) => {
 
 export const getAllUsers = async (req: Request, res: Response) => {
   try {
-    const users = await prisma.user.findMany({
-      include: {
-        assignments: true,
-        collections: {
-          include: {
-            collection: true,
-          },
-        },
-      },
-    });
+    const users = await prisma.user.findMany();
     res.json(users);
   } catch (error) {
     res.status(400).json({ error: "Failed to fetch users" });
+  }
+};
+
+export const getAdmins = async (req: Request, res: Response) => {
+  try {
+    const admins = await prisma.user.findMany({
+      where: {
+        isActive: true,
+        isAdmin: true,
+      },
+    });
+
+    res.json(admins);
+  } catch (error) {
+    res.status(400).json({ error: "Failed to fetch admins" });
   }
 };
