@@ -40,6 +40,8 @@ jobs:
               ls -ld "$TARGET"
               exit 1
             fi
+            # Cleanup old artifacts to avoid serving stale compiled files.
+            rm -rf "$TARGET/dist" "$TARGET/prisma"
 
       - name: Deploy files to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -60,8 +62,9 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           script: |
+            set -e
             cd ${{ secrets.VPS_TARGET_PATH_API }}
-            # Installation des dépendances de production uniquement sur le VPS
-            npm install --production
-            # Redémarrage de l'application avec PM2
-            pm2 restart restos-coeur-api || pm2 start dist/index.js --name restos-coeur-api
+            # Install runtime dependencies in a reproducible way
+            npm ci --omit=dev
+            PORT=3001 pm2 restart restos-coeur-api --update-env || PORT=3001 pm2 start dist/index.js --name restos-coeur-api --cwd ${{ secrets.VPS_TARGET_PATH_API }}
+            pm2 save
