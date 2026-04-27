@@ -23,7 +23,7 @@ router.get("/collections/:id", collectionApi.getCollectionById);
 // ────────────────────────────────────────────────────────────────────────────
 // All routes below require authentication
 // ────────────────────────────────────────────────────────────────────────────
-// router.use(authMiddleware);
+router.use(authMiddleware);
 
 // ─── Zone Routes ─────────────────────────────────────────────────────────────
 router.post("/zones", zoneApi.createZone);

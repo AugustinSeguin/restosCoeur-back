@@ -68,5 +68,5 @@ Authorization: Bearer {{token}}
 }
 
 ### Delete User
-DELETE {{api_url}}/users/2
+DELETE {{api_url}}/users/1
 Authorization: Bearer {{token}}
