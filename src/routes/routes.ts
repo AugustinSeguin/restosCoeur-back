@@ -7,6 +7,7 @@ import * as userApi from "./user.api";
 import * as assignmentApi from "./assignment.api";
 import * as userAnswerApi from "./userAnswer.api";
 import * as authApi from "./auth.api";
+import * as notificationApi from "./notification.api";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 
 const router = Router();
@@ -37,6 +38,10 @@ router.post("/collections", collectionApi.createCollection);
 router.put("/collections/:id", collectionApi.updateCollection);
 router.get("/collectionsBoard/:id", collectionApi.getCollectionBoardById);
 router.get("/collections", collectionApi.getAllCollections);
+router.post(
+  "/collections/:id/notifications",
+  notificationApi.sendNotifications,
+);
 
 // ─── Store Routes ────────────────────────────────────────────────────────────
 router.post("/stores", storeApi.createStore);
