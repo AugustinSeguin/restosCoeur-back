@@ -25,6 +25,22 @@ jobs:
       - name: Build project (TypeScript)
         run: npm run build --if-present
 
+      - name: Check target directory permissions on VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT }}
+          script: |
+            TARGET="${{ secrets.VPS_TARGET_PATH_API }}"
+            mkdir -p "$TARGET"
+            if [ ! -w "$TARGET" ]; then
+              echo "ERROR: target is not writable by current SSH user"
+              ls -ld "$TARGET"
+              exit 1
+            fi
+
       - name: Deploy files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -32,7 +48,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "dist/*,package.json,package-lock.json"
+          source: "dist/**,package.json,package-lock.json,prisma/**"
           target: ${{ secrets.VPS_TARGET_PATH_API }}
           strip_components: 0
 
