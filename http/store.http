@@ -1,10 +1,12 @@
 @api_url = https://api.restos-coeur.cleanascode.fr/api
 @token = 
+@api_key = your-api-key-change-in-production
 
 ### Create Store
 POST {{api_url}}/stores
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "title": "Magasin Paris 15",
@@ -19,15 +21,18 @@ Authorization: Bearer {{token}}
 ### Get All Stores
 GET {{api_url}}/stores
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Get Store by ID
 GET {{api_url}}/stores/1
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Update Store
 PUT {{api_url}}/stores/1
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "title": "Magasin Paris 15 - Updated",
@@ -42,3 +47,4 @@ Authorization: Bearer {{token}}
 ### Delete Store
 DELETE {{api_url}}/stores/1
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}

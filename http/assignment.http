@@ -1,5 +1,6 @@
 @api_url = http://localhost:3000/api
 @token = 
+@api_key = your-api-key-change-in-production
 @userId = 1
 @slotId = 1
 @storeId = 8
@@ -9,6 +10,7 @@
 POST {{api_url}}/assignments
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "userId": {{userId}},
@@ -20,11 +22,13 @@ Authorization: Bearer {{token}}
 ### Get Assignments by Collection ID
 GET {{api_url}}/collections/{{collectionId}}/assignments
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Update Assignment
 PUT {{api_url}}/assignments
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "userId": {{userId}},
@@ -38,6 +42,7 @@ Authorization: Bearer {{token}}
 DELETE {{api_url}}/assignments
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "userId": {{userId}},
