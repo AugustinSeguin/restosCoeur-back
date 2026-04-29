@@ -37,6 +37,7 @@ router.get("/zones", zoneApi.getAllZones);
 router.post("/collections", collectionApi.createCollection);
 router.put("/collections/:id", collectionApi.updateCollection);
 router.get("/collectionsBoard/:id", collectionApi.getCollectionBoardById);
+router.get("/collections/:id/users", collectionApi.getUsersExcelByCollectionId);
 router.get("/collections", collectionApi.getAllCollections);
 router.post(
   "/collections/:id/notifications",

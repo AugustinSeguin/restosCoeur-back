@@ -25,7 +25,6 @@ const normalizeIds = (ids: unknown): number[] => {
   return [...new Set(normalized)];
 };
 
-
 const findInvalidZoneIds = async (zoneIds: number[]): Promise<number[]> => {
   if (zoneIds.length === 0) return [];
 
@@ -350,5 +349,96 @@ export const getAllCollections = async (req: Request, res: Response) => {
     res.json(collections);
   } catch (error) {
     res.status(400).json({ error: "Failed to fetch collections" });
+  }
+};
+
+export const getUsersExcelByCollectionId = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const collectionId = Number.parseInt(id);
+
+    if (!Number.isInteger(collectionId) || collectionId <= 0) {
+      return res.status(400).json({ error: "Invalid collection id" });
+    }
+
+    // Vérifier que la collection existe
+    const collection = await prisma.collection.findUnique({
+      where: { id: collectionId },
+    });
+
+    if (!collection) {
+      return res.status(404).json({ error: "Collection not found" });
+    }
+
+    // Récupérer tous les utilisateurs de la collection
+    const users = await prisma.user.findMany({
+      where: {
+        collections: {
+          some: {
+            collectionId,
+          },
+        },
+      },
+      orderBy: {
+        lastName: "asc",
+      },
+    });
+
+    // Créer un nouveau workbook Excel
+    const ExcelJS = await import("exceljs");
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Users");
+
+    // Ajouter les headers
+    worksheet.columns = [
+      { header: "ID", key: "id", width: 10 },
+      { header: "Nom", key: "lastName", width: 20 },
+      { header: "Prénom", key: "firstName", width: 20 },
+      { header: "Username", key: "username", width: 20 },
+      { header: "Date de naissance", key: "birthdate", width: 20 },
+      { header: "Code Postal", key: "codePostal", width: 15 },
+      { header: "Email", key: "email", width: 30 },
+      { header: "Téléphone", key: "phoneNumber", width: 15 },
+      { header: "Type", key: "type", width: 15 },
+      { header: "Actif", key: "isActive", width: 10 },
+      { header: "Admin", key: "isAdmin", width: 10 },
+    ];
+
+    // Formater le header
+    worksheet.getRow(1).font = { bold: true };
+
+    // Ajouter les données des utilisateurs
+    users.forEach((user) => {
+      worksheet.addRow({
+        id: user.id,
+        lastName: user.lastName,
+        firstName: user.firstName,
+        username: user.username,
+        birthdate: user.birthdate.toLocaleDateString("fr-FR"),
+        codePostal: user.codePostal,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        type: user.type,
+        isActive: user.isActive ? "Oui" : "Non",
+        isAdmin: user.isAdmin ? "Oui" : "Non",
+      });
+    });
+
+    // Envoyer le fichier
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="collection_${collection.title}_users.xlsx"`,
+    );
+
+    await workbook.xlsx.write(res);
+  } catch (error) {
+    res.status(400).json({ error: "Failed to export users to Excel" });
   }
 };
