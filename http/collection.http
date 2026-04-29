@@ -20,6 +20,10 @@ Authorization: Bearer {{token}}
 GET {{api_url}}/collections/1
 Authorization: Bearer {{token}}
 
+### Download Collection Volunteers Excel
+GET {{api_url}}/collections/1/users
+Authorization: Bearer {{token}}
+
 ### Get Collection with All Details (users, userAnswers, assignments, zones, stores, slots)
 GET {{api_url}}/collectionsBoard/1
 Authorization: Bearer {{token}}

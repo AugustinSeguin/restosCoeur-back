@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import ExcelJS from "exceljs";
 import prisma from "@/libs/prisma";
 
 const hhmmToMinutes = (value: string): number | null => {
@@ -388,7 +389,6 @@ export const getUsersExcelByCollectionId = async (
     });
 
     // Créer un nouveau workbook Excel
-    const ExcelJS = await import("exceljs");
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Users");
 
@@ -427,18 +427,26 @@ export const getUsersExcelByCollectionId = async (
       });
     });
 
+    const safeTitle = collection.title
+      .replace(/[\\/\r\n\t\0\v\f"]/g, "-")
+      .trim();
+    const filename = `collection_${safeTitle || collection.id}_users.xlsx`;
+
     // Envoyer le fichier
     res.setHeader(
       "Content-Type",
       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     );
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="collection_${collection.title}_users.xlsx"`,
-    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
 
-    await workbook.xlsx.write(res);
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.send(Buffer.from(buffer));
   } catch (error) {
-    res.status(400).json({ error: "Failed to export users to Excel" });
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Failed to export users to Excel", error);
+    res.status(400).json({
+      error: "Failed to export users to Excel",
+      details: message,
+    });
   }
 };

@@ -1,5 +1,6 @@
 @api_url = https://api.restos-coeur.cleanascode.fr/api
-@token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc3MzIzNzE4OSwiZXhwIjoxNzczMzIzNTg5fQ.0yttqutpuVt-Yx8FS8uEeWzukx7hlu9n2Hm-FI4qrzM"
+@token = 
+# "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc3MzIzNzE4OSwiZXhwIjoxNzczMzIzNTg5fQ.0yttqutpuVt-Yx8FS8uEeWzukx7hlu9n2Hm-FI4qrzM"
 
 ### Create User
 POST {{api_url}}/users
