@@ -1,10 +1,12 @@
 @api_url = http://localhost:3000/api
 @token = 
+@api_key = your-api-key-change-in-production
 
 ### Create Zone (without stores)
 POST {{api_url}}/zones
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "title": "Zone Nord"
@@ -14,6 +16,7 @@ Authorization: Bearer {{token}}
 POST {{api_url}}/zones
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "title": "Zone Nord",
@@ -23,15 +26,18 @@ Authorization: Bearer {{token}}
 ### Get All Zones
 GET {{api_url}}/zones
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Get Zone by ID
 GET {{api_url}}/zones/1
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Update Zone
 PUT {{api_url}}/zones/1
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "title": "Zone Nord Updated",
@@ -41,3 +47,4 @@ Authorization: Bearer {{token}}
 ### Delete Zone
 DELETE {{api_url}}/zones/1
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}

@@ -1,9 +1,11 @@
 @api_url = http://localhost:3000/api
 @token = 
+@api_key = your-api-key-change-in-production
 
 ### Create UserAnswer (Newcomer form submission)
 POST {{api_url}}/user-answers
 Content-Type: application/json
+X-API-Key: {{api_key}}
 
 {
   "firstName": "Alice",
@@ -20,6 +22,7 @@ Content-Type: application/json
 ### Create UserAnswer with existing user
 POST {{api_url}}/user-answers
 Content-Type: application/json
+X-API-Key: {{api_key}}
 
 {
   "firstName": "Bob",
@@ -36,6 +39,7 @@ Content-Type: application/json
 ### Update UserAnswer (change one slot/zone and profile)
 PUT {{api_url}}/user-answers/1
 Content-Type: application/json
+X-API-Key: {{api_key}}
 
 {
   "firstName": "Alice",
@@ -51,11 +55,14 @@ Content-Type: application/json
 ### Get UserAnswer by ID
 GET {{api_url}}/user-answers/1
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Get all UserAnswers for a Collection
 GET {{api_url}}/collections/1/user-answers
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Delete UserAnswer
 DELETE {{api_url}}/user-answers/1
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}

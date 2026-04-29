@@ -1,10 +1,12 @@
 @api_url = http://localhost:3000/api
 @token = 
+@api_key = your-api-key-change-in-production
 
 ### Create Collection
 POST {{api_url}}/collections
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "title": "Collecte Mars 2026",
@@ -15,23 +17,28 @@ Authorization: Bearer {{token}}
 ### Get All Collections
 GET {{api_url}}/collections
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Get Collection by ID
 GET {{api_url}}/collections/1
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Download Collection Volunteers Excel
 GET {{api_url}}/collections/1/users
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Get Collection with All Details (users, userAnswers, assignments, zones, stores, slots)
 GET {{api_url}}/collectionsBoard/1
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Update Collection
 PUT {{api_url}}/collections/1
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "title": "Collecte Mars 2026 - Updated",

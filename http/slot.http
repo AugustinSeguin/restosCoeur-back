@@ -1,11 +1,13 @@
 @api_url = http://localhost:3000/api
 @token = 
+@api_key = your-api-key-change-in-production
 @collectionId = 1
 
 ### Create Slot
 POST {{api_url}}/slots
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "startAt": "2026-03-15T09:00:00Z",
@@ -16,15 +18,18 @@ Authorization: Bearer {{token}}
 ### Get All Slots
 GET {{api_url}}/slots
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Get Slot by ID
 GET {{api_url}}/slots/1
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 ### Update Slot
 PUT {{api_url}}/slots/1
 Content-Type: application/json
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
 
 {
   "startAt": "2026-03-15T10:00:00Z",
@@ -35,3 +40,4 @@ Authorization: Bearer {{token}}
 ### Delete Slot
 DELETE {{api_url}}/slots/1
 Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}

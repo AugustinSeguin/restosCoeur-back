@@ -1,9 +1,11 @@
 @api_url = http://localhost:3000/api
 @token = 
+@api_key = your-api-key-change-in-production
 
 ### Login (get token first)
 POST http://localhost:3000/api/auth/login
 Content-Type: application/json
+X-API-Key: {{api_key}}
 
 {
   "email": "admin@example.com",

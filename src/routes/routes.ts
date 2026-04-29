@@ -9,6 +9,7 @@ import * as userAnswerApi from "./userAnswer.api";
 import * as authApi from "./auth.api";
 import * as notificationApi from "./notification.api";
 import { authMiddleware } from "@/middlewares/auth.middleware";
+import { apiKeyMiddleware } from "../middlewares/apiKey.middleware";
 
 const router = Router();
 
@@ -25,6 +26,7 @@ router.get("/collections/:id", collectionApi.getCollectionById);
 // All routes below require authentication
 // ────────────────────────────────────────────────────────────────────────────
 // router.use(authMiddleware);
+router.use(apiKeyMiddleware);
 
 // ─── Zone Routes ─────────────────────────────────────────────────────────────
 router.post("/zones", zoneApi.createZone);
