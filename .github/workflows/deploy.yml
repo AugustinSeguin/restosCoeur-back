@@ -65,5 +65,5 @@ jobs:
             set -e
             cd ${{ secrets.VPS_TARGET_PATH_API }}
             npm ci 
-            PORT=3001 pm2 restart restos-coeur-api --update-env || PORT=3001 pm2 start dist/index.js --name restos-coeur-api --cwd ${{ secrets.VPS_TARGET_PATH_API }}
+            API_KEY='${{ secrets.API_KEY }}' PORT=3001 pm2 restart restos-coeur-api --update-env || API_KEY='${{ secrets.API_KEY }}' PORT=3001 pm2 start dist/index.js --name restos-coeur-api --cwd ${{ secrets.VPS_TARGET_PATH_API }}
             pm2 save
