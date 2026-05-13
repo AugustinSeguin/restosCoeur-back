@@ -1,5 +1,5 @@
-@api_url = https://api.restos-coeur.cleanascode.fr/api
-@token = 
+@api_url = http://localhost:3000/api
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjExLCJpYXQiOjE3Nzg2NjYzNDQsImV4cCI6MTc3ODc1Mjc0NH0.xnkwg_0weTQaw9VRSzAw7Y-uh8PHGT1nr61akfwdzvA
 @api_key = your-api-key-change-in-production
 # "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc3MzIzNzE4OSwiZXhwIjoxNzczMzIzNTg5fQ.0yttqutpuVt-Yx8FS8uEeWzukx7hlu9n2Hm-FI4qrzM"
 
@@ -10,7 +10,7 @@ Authorization: Bearer {{token}}
 X-API-Key: {{api_key}}
 
 {
-  "lastName": "Dupont",
+  "lastName": "DuZpont",
   "firstName": "Jean",
   "birthdate": "1990-05-14",
   "codePostal": "75011",

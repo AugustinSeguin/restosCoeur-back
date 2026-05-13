@@ -76,8 +76,8 @@ model User {
   username    String           @unique
   birthdate   DateTime         @db.Date
   codePostal  String
-  email       String?
-  phoneNumber String
+  email       String?          @unique
+  phoneNumber String           @unique
   /// Null if isAdmin = false
   password    String?
   isActive    Boolean          @default(true)

@@ -20,7 +20,9 @@ export const generateNotificationMessage = (
 
   return `Bonjour ${user.firstName},
 Merci de nous aider pour la collecte ${collectionName}.
-Vous avez ete assigne au ${store.title} le ${slotRange}
-On compte sur vous
+Vous avez ete assigné au ${store.title} le ${slotRange}
+On compte sur vous. 
 Les restos du coeur`;
 };
+
+// 160 chars max for SMS, à vérifier 
