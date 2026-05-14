@@ -1,9 +1,10 @@
-@api_url = http://localhost:3000/api
+# @api_url = http://localhost:3000/api
+@api_url = https://api.restos-coeur.cleanascode.fr/api
 @token = 
 @api_key = your-api-key-change-in-production
 
 ### Login (get token first)
-POST http://localhost:3000/api/auth/login
+POST {{api_url}}/auth/login
 Content-Type: application/json
 X-API-Key: {{api_key}}
 
