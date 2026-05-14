@@ -353,6 +353,138 @@ export const getAllCollections = async (req: Request, res: Response) => {
   }
 };
 
+export const exportCollection = async (req: Request, res: Response) => {
+  try {
+    const collectionIdRaw = Array.isArray(req.query.collectionId)
+      ? req.query.collectionId[0]
+      : (req.query.collectionId as string | undefined);
+
+    const collectionId = Number.parseInt(collectionIdRaw || "", 10);
+    if (!Number.isInteger(collectionId) || collectionId <= 0) {
+      return res.status(400).json({ error: "Invalid collection id" });
+    }
+
+    const collection = await prisma.collection.findUnique({
+      where: { id: collectionId },
+      include: {
+        users: {
+          include: {
+            user: {
+              include: {
+                assignments: {
+                  where: { collectionId },
+                  include: { store: true },
+                },
+              },
+            },
+            userAnswers: {
+              where: { collectionId },
+            },
+          },
+        },
+        zones: {
+          include: {
+            zone: {
+              include: {
+                stores: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!collection)
+      return res.status(404).json({ error: "Collection not found" });
+
+    const storesInCollection = collection.zones.flatMap((collectionZone) => {
+      const zoneSummary = {
+        id: collectionZone.zone.id,
+        title: collectionZone.zone.title,
+      };
+      return collectionZone.zone.stores.map((store) => ({
+        ...store,
+        zone: zoneSummary,
+      }));
+    });
+
+    const workbook = new ExcelJS.Workbook();
+
+    for (const store of storesInCollection) {
+      const safeSheetName = `${store.title ?? "store"}_${store.id}`.slice(
+        0,
+        31,
+      );
+      const worksheet = workbook.addWorksheet(safeSheetName);
+
+      // A1 = store name
+      worksheet.getCell("A1").value = store.title || `Store ${store.id}`;
+      worksheet.getCell("A1").font = { bold: true, size: 14 };
+
+      // Headers starting at B1
+      const headers = ["Nom", "Prénom", "Téléphone", "Type"];
+      headers.forEach((h, i) => {
+        const cell = worksheet.getCell(1, 2 + i); // row 1, col B is 2
+        cell.value = h;
+        cell.font = { bold: true };
+        cell.alignment = { vertical: "middle", horizontal: "left" } as any;
+        worksheet.getColumn(2 + i).width = [20, 20, 18, 15][i];
+      });
+
+      // Collect assigned users for this store (unique by userId)
+      const usersMap = new Map<number, any>();
+      for (const collectionUser of collection.users) {
+        const user = collectionUser.user;
+        const userAssignments = (user.assignments || []).filter(
+          (a) => a.collectionId === collectionId && a.storeId === store.id,
+        );
+        if (userAssignments.length > 0) {
+          if (!usersMap.has(user.id)) {
+            usersMap.set(user.id, user);
+          }
+        }
+      }
+
+      // Write rows starting at row 2
+      let rowIndex = 2;
+      for (const user of usersMap.values()) {
+        worksheet.getCell(rowIndex, 2).value = user.lastName || "";
+        worksheet.getCell(rowIndex, 3).value = user.firstName || "";
+        worksheet.getCell(rowIndex, 4).value = user.phoneNumber || "";
+        worksheet.getCell(rowIndex, 5).value = user.type || "";
+        rowIndex += 1;
+      }
+
+      // Some simple styling
+      worksheet.properties.defaultRowHeight = 20;
+      worksheet.views = [{ state: "frozen", ySplit: 1 }];
+    }
+
+    const safeTitle = collection.title
+      .replace(/[\\/\r\n\t\0\v\f"]/g, "-")
+      .trim();
+    const filename = `collection_${safeTitle || collection.id}_export.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Failed to export collection to Excel", error);
+    res
+      .status(400)
+      .json({
+        error: "Failed to export collection to Excel",
+        details: message,
+      });
+  }
+};
+
 export const getUsersExcelByCollectionId = async (
   req: Request,
   res: Response,

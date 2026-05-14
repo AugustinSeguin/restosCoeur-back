@@ -7,6 +7,7 @@ const PORT = process.env.PORT || 3000;
 
 const cors = require("cors");
 const frontendUrlsEnv =
+  process.env.FRONTEND_URLS ||
   process.env.FRONTEND_URL ||
   "http://localhost:5173";
 const allowedOrigins = frontendUrlsEnv.split(",").map((s: string) => s.trim());
