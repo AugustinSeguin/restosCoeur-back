@@ -355,9 +355,10 @@ export const getAllCollections = async (req: Request, res: Response) => {
 
 export const exportCollection = async (req: Request, res: Response) => {
   try {
-    const collectionIdRaw = Array.isArray(req.query.collectionId)
-      ? req.query.collectionId[0]
-      : (req.query.collectionId as string | undefined);
+    const collectionIdRaw =
+      typeof req.query.collectionId === "string"
+        ? req.query.collectionId
+        : undefined;
 
     const collectionId = Number.parseInt(collectionIdRaw || "", 10);
     if (!Number.isInteger(collectionId) || collectionId <= 0) {
@@ -476,12 +477,10 @@ export const exportCollection = async (req: Request, res: Response) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Failed to export collection to Excel", error);
-    res
-      .status(400)
-      .json({
-        error: "Failed to export collection to Excel",
-        details: message,
-      });
+    res.status(400).json({
+      error: "Failed to export collection to Excel",
+      details: message,
+    });
   }
 };
 
