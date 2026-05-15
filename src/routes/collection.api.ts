@@ -38,6 +38,50 @@ const findInvalidZoneIds = async (zoneIds: number[]): Promise<number[]> => {
   return zoneIds.filter((id) => !existingIds.has(id));
 };
 
+const formatTime = (value: Date): string =>
+  `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
+
+const formatSlotLabel = (slot: { startAt: Date; endAt: Date }): string => {
+  const dateLabel = new Intl.DateTimeFormat("fr-FR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(slot.startAt);
+
+  return `${dateLabel} ${formatTime(slot.startAt)} - ${formatTime(slot.endAt)}`;
+};
+
+const fitWorksheetColumns = (
+  worksheet: ExcelJS.Worksheet,
+  columnCount: number,
+  minimumWidths: number[],
+  maximumWidths: number[],
+) => {
+  for (let columnIndex = 1; columnIndex <= columnCount; columnIndex += 1) {
+    let maxLength = 0;
+
+    worksheet
+      .getColumn(columnIndex)
+      .eachCell({ includeEmpty: true }, (cell) => {
+        const lines = (cell.text || "").split(/\r?\n/);
+        const cellMaxLength = lines.reduce(
+          (longest, line) => Math.max(longest, line.length),
+          0,
+        );
+
+        maxLength = Math.max(maxLength, cellMaxLength);
+      });
+
+    const minimumWidth = minimumWidths[columnIndex - 1] ?? 12;
+    const maximumWidth = maximumWidths[columnIndex - 1] ?? 40;
+    worksheet.getColumn(columnIndex).width = Math.min(
+      Math.max(maxLength + 2, minimumWidth),
+      maximumWidth,
+    );
+  }
+};
+
 export const createCollection = async (req: Request, res: Response) => {
   try {
     const { title, isActive, formUrl } = req.body;
@@ -355,15 +399,8 @@ export const getAllCollections = async (req: Request, res: Response) => {
 
 export const exportCollection = async (req: Request, res: Response) => {
   try {
-    const collectionIdRaw =
-      typeof req.query.collectionId === "string"
-        ? req.query.collectionId
-        : undefined;
-
-    const collectionId = Number.parseInt(collectionIdRaw || "", 10);
-    if (!Number.isInteger(collectionId) || collectionId <= 0) {
-      return res.status(400).json({ error: "Invalid collection id" });
-    }
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const collectionId = Number.parseInt(id);
 
     const collection = await prisma.collection.findUnique({
       where: { id: collectionId },
@@ -374,7 +411,7 @@ export const exportCollection = async (req: Request, res: Response) => {
               include: {
                 assignments: {
                   where: { collectionId },
-                  include: { store: true },
+                  include: { slot: true, store: true },
                 },
               },
             },
@@ -418,47 +455,180 @@ export const exportCollection = async (req: Request, res: Response) => {
       );
       const worksheet = workbook.addWorksheet(safeSheetName);
 
-      // A1 = store name
-      worksheet.getCell("A1").value = store.title || `Store ${store.id}`;
-      worksheet.getCell("A1").font = { bold: true, size: 14 };
+      const columnCount = 5;
+      const titleRowIndex = 1;
+      const headerRowIndex = 2;
+      const firstDataRowIndex = 3;
 
-      // Headers starting at B1
-      const headers = ["Nom", "Prénom", "Téléphone", "Type"];
-      headers.forEach((h, i) => {
-        const cell = worksheet.getCell(1, 2 + i); // row 1, col B is 2
-        cell.value = h;
-        cell.font = { bold: true };
-        cell.alignment = { vertical: "middle", horizontal: "left" } as any;
-        worksheet.getColumn(2 + i).width = [20, 20, 18, 15][i];
+      worksheet.mergeCells(titleRowIndex, 1, titleRowIndex, columnCount);
+      worksheet.getCell(titleRowIndex, 1).value =
+        store.title || `Store ${store.id}`;
+      worksheet.getCell(titleRowIndex, 1).font = {
+        bold: true,
+        size: 14,
+        color: { argb: "FFFFFFFF" },
+      };
+      worksheet.getCell(titleRowIndex, 1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FF8B1E1E" },
+      };
+      worksheet.getCell(titleRowIndex, 1).alignment = {
+        vertical: "middle",
+        horizontal: "center",
+      };
+      worksheet.getRow(titleRowIndex).height = 24;
+
+      const headers = ["Nom", "Prénom", "Téléphone", "Type", "Créneaux"];
+      headers.forEach((header, index) => {
+        const cell = worksheet.getCell(headerRowIndex, index + 1);
+        cell.value = header;
+        cell.font = {
+          bold: true,
+          color: { argb: "FF7A1C1C" },
+        };
+        cell.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "FFFCEEEE" },
+        };
+        cell.alignment = {
+          vertical: "middle",
+          horizontal: "center",
+          wrapText: true,
+        };
+        cell.border = {
+          top: { style: "thin", color: { argb: "FFD9C5C5" } },
+          left: { style: "thin", color: { argb: "FFD9C5C5" } },
+          bottom: { style: "thin", color: { argb: "FFD9C5C5" } },
+          right: { style: "thin", color: { argb: "FFD9C5C5" } },
+        };
       });
 
-      // Collect assigned users for this store (unique by userId)
-      const usersMap = new Map<number, any>();
+      const usersMap = new Map<
+        number,
+        {
+          user: (typeof collection.users)[number]["user"];
+          assignments: (typeof collection.users)[number]["user"]["assignments"];
+        }
+      >();
+
       for (const collectionUser of collection.users) {
         const user = collectionUser.user;
         const userAssignments = (user.assignments || []).filter(
-          (a) => a.collectionId === collectionId && a.storeId === store.id,
+          (assignment) =>
+            assignment.collectionId === collectionId &&
+            assignment.storeId === store.id,
         );
+
         if (userAssignments.length > 0) {
-          if (!usersMap.has(user.id)) {
-            usersMap.set(user.id, user);
+          const existing = usersMap.get(user.id);
+          if (existing) {
+            existing.assignments.push(...userAssignments);
+          } else {
+            usersMap.set(user.id, {
+              user,
+              assignments: [...userAssignments],
+            });
           }
         }
       }
 
-      // Write rows starting at row 2
-      let rowIndex = 2;
-      for (const user of usersMap.values()) {
-        worksheet.getCell(rowIndex, 2).value = user.lastName || "";
-        worksheet.getCell(rowIndex, 3).value = user.firstName || "";
-        worksheet.getCell(rowIndex, 4).value = user.phoneNumber || "";
-        worksheet.getCell(rowIndex, 5).value = user.type || "";
+      let rowIndex = firstDataRowIndex;
+      const rows = Array.from(usersMap.values()).sort((left, right) => {
+        const leftName =
+          `${left.user.lastName || ""} ${left.user.firstName || ""}`.trim();
+        const rightName =
+          `${right.user.lastName || ""} ${right.user.firstName || ""}`.trim();
+
+        return leftName.localeCompare(rightName, "fr");
+      });
+
+      for (const { user, assignments } of rows) {
+        const uniqueSlotLabels = Array.from(
+          new Map(
+            assignments
+              .filter((assignment) => assignment.slot)
+              .sort((left, right) => {
+                const leftStart = left.slot?.startAt?.getTime?.() ?? 0;
+                const rightStart = right.slot?.startAt?.getTime?.() ?? 0;
+                return leftStart - rightStart;
+              })
+              .map((assignment) => [
+                assignment.slotId,
+                formatSlotLabel(assignment.slot!),
+              ]),
+          ).values(),
+        );
+
+        const values = [
+          user.lastName || "",
+          user.firstName || "",
+          user.phoneNumber || "",
+          user.type || "",
+          uniqueSlotLabels.join("\n"),
+        ];
+
+        values.forEach((value, columnIndex) => {
+          const cell = worksheet.getCell(rowIndex, columnIndex + 1);
+          cell.value = value;
+          cell.alignment = {
+            vertical: "top",
+            horizontal: "left",
+            wrapText: true,
+          };
+          cell.border = {
+            top: { style: "thin", color: { argb: "FFE5E7EB" } },
+            left: { style: "thin", color: { argb: "FFE5E7EB" } },
+            bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+            right: { style: "thin", color: { argb: "FFE5E7EB" } },
+          };
+        });
+
+        if ((rowIndex - firstDataRowIndex) % 2 === 1) {
+          for (
+            let columnIndex = 1;
+            columnIndex <= columnCount;
+            columnIndex += 1
+          ) {
+            worksheet.getCell(rowIndex, columnIndex).fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "FFFAFAFA" },
+            };
+          }
+        }
+
         rowIndex += 1;
       }
 
-      // Some simple styling
+      if (rows.length === 0) {
+        worksheet.mergeCells(
+          firstDataRowIndex,
+          1,
+          firstDataRowIndex,
+          columnCount,
+        );
+        worksheet.getCell(firstDataRowIndex, 1).value =
+          "Aucun bénévole affecté";
+        worksheet.getCell(firstDataRowIndex, 1).font = { italic: true };
+        worksheet.getCell(firstDataRowIndex, 1).alignment = {
+          vertical: "middle",
+          horizontal: "center",
+        };
+      }
+
+      fitWorksheetColumns(
+        worksheet,
+        columnCount,
+        [16, 16, 18, 14, 28],
+        [24, 24, 24, 18, 42],
+      );
+
+      worksheet.getRow(headerRowIndex).height = 22;
+      worksheet.getRow(firstDataRowIndex).height = 20;
       worksheet.properties.defaultRowHeight = 20;
-      worksheet.views = [{ state: "frozen", ySplit: 1 }];
+      worksheet.views = [{ state: "frozen", ySplit: 2 }];
     }
 
     const safeTitle = collection.title
