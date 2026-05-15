@@ -1,7 +1,7 @@
 import { User, Store, Slot } from "@prisma/client";
 import { generateNotificationMessage } from "@/services/NotificationService";
 
-const smsEnvoiUrl = "https://www.smsenvoi.com/getapi/sendsms/";
+const defaultSmsPartnerUrl = "https://api.smspartner.fr/v1/send";
 
 /**
  * Send SMS notification to a user for a slot and store
@@ -17,14 +17,13 @@ export const sendSms = async (
   slot: Slot,
   store: Store,
 ): Promise<void> => {
-  const email = process.env.SMS_ENVOI_EMAIL;
-  const apiKey = process.env.SMS_ENVOI_API_KEY;
-  const smsType = process.env.SMS_ENVOI_TYPE ?? "PREMIUM";
-  const sender = process.env.SMS_ENVOI_SENDER;
-  const smsEnvoiUrl = process.env.SMS_ENVOI_URL;
+  const apiKey = process.env.SMS_API_KEY;
+  const gamme = process.env.SMS_GAMME ?? process.env.SMS_TYPE ?? "1";
+  const sender = process.env.SMS_SENDER;
+  const smsUrl = process.env.SMS_URL ?? defaultSmsPartnerUrl;
 
-  if (!email || !apiKey) {
-    throw new Error("SMS_ENVOI_EMAIL or SMS_ENVOI_API_KEY is not configured");
+  if (!apiKey) {
+    throw new Error("SMS_API_KEY is not configured");
   }
 
   if (!user.phoneNumber) {
@@ -42,43 +41,29 @@ export const sendSms = async (
     store,
   );
 
-  const params = new URLSearchParams({
-    email,
-    apikey: apiKey,
-    destinataire: normalizedPhoneNumber,
-    message,
-    type: smsType,
-  });
-
-  if (sender) {
-    params.set("emetteur", sender);
-  }
-
-  const response = await fetch(`${smsEnvoiUrl}?${params.toString()}`, {
-    method: "GET",
+  const response = await fetch(smsUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "cache-control": "no-cache",
+    },
+    body: JSON.stringify({
+      apiKey,
+      phoneNumbers: `+${normalizedPhoneNumber}`,
+      sender: sender ?? "RESTOS",
+      gamme: Number(gamme) || 1,
+      message,
+    }),
   });
 
   const rawResult = await response.text();
 
-  let parsedResult: unknown;
-  try {
-    parsedResult = JSON.parse(rawResult);
-  } catch {
-    parsedResult = rawResult;
-  }
-
-  const isOkResult =
-    typeof parsedResult === "object" &&
-    parsedResult !== null &&
-    "resultat" in parsedResult &&
-    (parsedResult as { resultat?: string }).resultat === "OK";
-
-  if (response.ok && (isOkResult || typeof parsedResult === "string")) {
+  if (response.ok) {
     console.log(
       `[SmsService] SMS envoye avec succes a ${normalizedPhoneNumber}`,
     );
     return;
   }
 
-  throw new Error(`Erreur API SMS Envoi: ${rawResult}`);
+  throw new Error(`Erreur API SMS Partner: ${rawResult}`);
 };

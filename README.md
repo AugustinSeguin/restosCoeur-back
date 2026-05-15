@@ -88,6 +88,16 @@ Variables d'environnement attendues (GitHub Secrets recommandés) :
 - `JWT_SECRET` : secret JWT utilisé par l'API
 - `FRONTEND_URL` : URL public du frontend (ex: https://app.monsite.fr)
 - `FRONTEND_URLS` : liste d'origines CORS séparées par des virgules (ex: https://app.monsite.fr,http://localhost:5173)
+- `MAIL_HOST` : hôte SMTP
+- `MAIL_PORT` : port SMTP
+- `MAIL_SECURE` : active TLS/SSL pour SMTP
+- `MAIL_USER` : utilisateur SMTP
+- `MAIL_PASS` : mot de passe SMTP
+- `MAIL_FROM` : adresse d'expéditeur
+- `SMS_URL` : endpoint SMS Partner (ex: https://api.smspartner.fr/v1/send)
+- `SMS_API_KEY` : clé API SMS Partner
+- `SMS_GAMME` : gamme SMS Partner (ex: 1)
+- `SMS_SENDER` : nom d'expéditeur SMS
 - `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`, `VPS_PORT`, `VPS_TARGET_PATH_API` : variables utilisées par le workflow pour le déploiement SSH/SCP
 
 Ajouter les secrets GitHub :
@@ -122,6 +132,16 @@ JWT_SECRET=xxxxx
 FRONTEND_URLS=https://app.monsite.fr,http://localhost:5173
 PORT=3001
 DATABASE_URL="postgresql://user:pass@host:5432/db?schema=public"
+MAIL_HOST="smtp.example.com"
+MAIL_PORT=587
+MAIL_SECURE=false
+MAIL_USER=""
+MAIL_PASS=""
+MAIL_FROM=""
+SMS_URL="https://api.smspartner.fr/v1/send"
+SMS_API_KEY=""
+SMS_GAMME="1"
+SMS_SENDER="RESTOS"
 ```
 
 3. Prisma :
@@ -136,7 +156,7 @@ npx prisma generate
 4. Démarrer l'API avec `pm2` (ou votre process manager) :
 
 ```bash
-API_KEY='...' JWT_SECRET='...' FRONTEND_URLS='https://app.monsite.fr' PORT=3001 pm2 start dist/index.js --name restos-coeur-api --cwd /var/www/restos-coeur-api
+API_KEY='...' JWT_SECRET='...' FRONTEND_URLS='https://app.monsite.fr' PORT=3001 MAIL_HOST='smtp.example.com' MAIL_PORT=587 MAIL_SECURE=false MAIL_USER='' MAIL_PASS='' MAIL_FROM='' SMS_URL='https://api.smspartner.fr/v1/send' SMS_API_KEY='...' SMS_GAMME='1' SMS_SENDER='RESTOS' pm2 start dist/index.js --name restos-coeur-api --cwd /var/www/restos-coeur-api
 ```
 
 5. Vérifier les logs :

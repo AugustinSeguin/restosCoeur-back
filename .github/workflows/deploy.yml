@@ -66,4 +66,7 @@ jobs:
             cd ${{ secrets.VPS_TARGET_PATH_API }}
             npm ci 
             API_KEY='${{ secrets.API_KEY }}' JWT_SECRET='${{ secrets.JWT_SECRET }}' FRONTEND_URLS='${{ secrets.FRONTEND_URLS }}' FRONTEND_URL='${{ secrets.FRONTEND_URL }}' PORT=3001 pm2 restart restos-coeur-api --update-env || API_KEY='${{ secrets.API_KEY }}' JWT_SECRET='${{ secrets.JWT_SECRET }}' FRONTEND_URLS='${{ secrets.FRONTEND_URLS }}' FRONTEND_URL='${{ secrets.FRONTEND_URL }}' PORT=3001 pm2 start dist/index.js --name restos-coeur-api --cwd ${{ secrets.VPS_TARGET_PATH_API }}
+            # SMS_API_KEY='${{ secrets.SMS_API_KEY }}' SMS_GAMME='${{ secrets.SMS_GAMME }}' SMS_SENDER='${{ secrets.SMS_SENDER }}' SMS_URL='${{ secrets.SMS_URL }}'
+            # MAIL_HOST='${{ secrets.MAIL_HOST }}' MAIL_PORT='${{ secrets.MAIL_PORT }}' MAIL_USER='${{ secrets.MAIL_USER }}' MAIL_PASS='${{ secrets.MAIL_PASS }}' MAIL_FROM='${{ secrets.MAIL_FROM }}'
             pm2 save
+  
