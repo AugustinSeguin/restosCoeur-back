@@ -1,86 +1,33 @@
 import { Request, Response } from "express";
 import ExcelJS from "exceljs";
+import path from "node:path";
+import * as XLSX from "xlsx";
 import prisma from "@/libs/prisma";
+import {
+  buildImportUsername,
+  dateToMinutes,
+  extractPreferredPhone,
+  findInvalidZoneIds,
+  fitWorksheetColumns,
+  formatSlotLabel,
+  hhmmToMinutes,
+  mapImportedType,
+  normalizeEmail,
+  normalizeIds,
+  normalizeText,
+  stripDiacritics,
+} from "@/helpers/collectionHelper";
 
-const hhmmToMinutes = (value: string): number | null => {
-  const match = /^(\d{2}):(\d{2})$/.exec(value);
-  if (!match) return null;
-
-  const hours = Number.parseInt(match[1], 10);
-  const minutes = Number.parseInt(match[2], 10);
-  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return null;
-
-  return hours * 60 + minutes;
+type UploadRequest = Request & {
+  file?: Express.Multer.File;
 };
 
-const dateToMinutes = (value: Date): number =>
-  value.getHours() * 60 + value.getMinutes();
-
-const normalizeIds = (ids: unknown): number[] => {
-  if (!Array.isArray(ids)) return [];
-
-  const normalized = ids
-    .map((id) => (typeof id === "string" ? Number.parseInt(id, 10) : id))
-    .filter((id): id is number => Number.isInteger(id) && id > 0);
-
-  return [...new Set(normalized)];
-};
-
-const findInvalidZoneIds = async (zoneIds: number[]): Promise<number[]> => {
-  if (zoneIds.length === 0) return [];
-
-  const existingZones = await prisma.zone.findMany({
-    where: { id: { in: zoneIds } },
-    select: { id: true },
-  });
-
-  const existingIds = new Set(existingZones.map((zone) => zone.id));
-  return zoneIds.filter((id) => !existingIds.has(id));
-};
-
-const formatTime = (value: Date): string =>
-  `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
-
-const formatSlotLabel = (slot: { startAt: Date; endAt: Date }): string => {
-  const dateLabel = new Intl.DateTimeFormat("fr-FR", {
-    weekday: "short",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  }).format(slot.startAt);
-
-  return `${dateLabel} ${formatTime(slot.startAt)} - ${formatTime(slot.endAt)}`;
-};
-
-const fitWorksheetColumns = (
-  worksheet: ExcelJS.Worksheet,
-  columnCount: number,
-  minimumWidths: number[],
-  maximumWidths: number[],
-) => {
-  for (let columnIndex = 1; columnIndex <= columnCount; columnIndex += 1) {
-    let maxLength = 0;
-
-    worksheet
-      .getColumn(columnIndex)
-      .eachCell({ includeEmpty: true }, (cell) => {
-        const lines = (cell.text || "").split(/\r?\n/);
-        const cellMaxLength = lines.reduce(
-          (longest, line) => Math.max(longest, line.length),
-          0,
-        );
-
-        maxLength = Math.max(maxLength, cellMaxLength);
-      });
-
-    const minimumWidth = minimumWidths[columnIndex - 1] ?? 12;
-    const maximumWidth = maximumWidths[columnIndex - 1] ?? 40;
-    worksheet.getColumn(columnIndex).width = Math.min(
-      Math.max(maxLength + 2, minimumWidth),
-      maximumWidth,
-    );
-  }
-};
+const ACCEPTED_EXCEL_EXTENSIONS = new Set([".xls", ".xlsx"]);
+const ACCEPTED_EXCEL_MIME_TYPES = new Set([
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/octet-stream",
+]);
 
 export const createCollection = async (req: Request, res: Response) => {
   try {
@@ -747,6 +694,233 @@ export const getUsersExcelByCollectionId = async (
     console.error("Failed to export users to Excel", error);
     res.status(400).json({
       error: "Failed to export users to Excel",
+      details: message,
+    });
+  }
+};
+
+export const importUsersByCollectionId = async (
+  req: UploadRequest,
+  res: Response,
+) => {
+  try {
+    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+    const collectionId = Number.parseInt(id, 10);
+
+    if (!Number.isInteger(collectionId) || collectionId <= 0) {
+      return res.status(400).json({ error: "Invalid collection id" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Aucun fichier Excel fourni.",
+      });
+    }
+
+    const extension = path.extname(req.file.originalname).toLowerCase();
+    if (!ACCEPTED_EXCEL_EXTENSIONS.has(extension)) {
+      return res.status(400).json({
+        success: false,
+        message: "Le fichier doit etre au format .xlsx ou .xls.",
+      });
+    }
+
+    if (!ACCEPTED_EXCEL_MIME_TYPES.has(req.file.mimetype)) {
+      return res.status(400).json({
+        success: false,
+        message: "Le type MIME du fichier n'est pas accepte.",
+      });
+    }
+
+    const collection = await prisma.collection.findUnique({
+      where: { id: collectionId },
+      select: { id: true },
+    });
+
+    if (!collection) {
+      return res.status(404).json({
+        success: false,
+        message: "Collection not found",
+      });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, {
+      type: "buffer",
+      raw: false,
+    });
+    const firstSheetName = workbook.SheetNames[0];
+
+    if (!firstSheetName) {
+      return res.status(400).json({
+        success: false,
+        message: "Le fichier Excel est vide.",
+      });
+    }
+
+    const worksheet = workbook.Sheets[firstSheetName];
+    const rows = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+      header: 1,
+      defval: "",
+      raw: false,
+      blankrows: false,
+    });
+
+    const headerRow = Array.isArray(rows[1]) ? rows[1] : rows[0];
+    const normalizeHeader = (value: unknown): string =>
+      stripDiacritics(normalizeText(value)).toLowerCase();
+
+    const headerIndex = (candidateHeaders: string[]): number =>
+      headerRow.findIndex((value) => {
+        const normalized = normalizeHeader(value);
+        return candidateHeaders.some((candidate) =>
+          normalized.includes(candidate),
+        );
+      });
+
+    const lastNameIndex = headerIndex(["nom"]);
+    const firstNameIndex = headerIndex(["prenom"]);
+    const typeIndex = headerIndex(["type d'engagement", "type"]);
+    const emailIndex = headerIndex(["mail perso", "mail"]);
+    const phoneIndex = headerIndex(["contact", "telephone", "téléphone"]);
+
+    if (
+      lastNameIndex < 0 ||
+      firstNameIndex < 0 ||
+      typeIndex < 0 ||
+      emailIndex < 0 ||
+      phoneIndex < 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Le fichier Excel ne contient pas les colonnes attendues (Nom, Prénom, Type d'engagement, Mail Perso, Contact).",
+      });
+    }
+
+    const summary = {
+      processedRows: 0,
+      skippedRows: 0,
+      createdUsers: 0,
+      existingUsers: 0,
+      linkedUsers: 0,
+    };
+
+    for (let rowIndex = 2; rowIndex < rows.length; rowIndex += 1) {
+      const row = rows[rowIndex];
+      if (!Array.isArray(row)) {
+        continue;
+      }
+
+      const lastName = normalizeText(row[lastNameIndex]);
+      const firstName = normalizeText(row[firstNameIndex]);
+      const typeRaw = normalizeText(row[typeIndex]);
+      const email = normalizeEmail(normalizeText(row[emailIndex]));
+      const phone = extractPreferredPhone(normalizeText(row[phoneIndex]));
+
+      if (!lastName && !firstName && !phone) {
+        continue;
+      }
+
+      if (!phone) {
+        summary.skippedRows += 1;
+        continue;
+      }
+
+      summary.processedRows += 1;
+
+      const userType = mapImportedType(typeRaw);
+
+      const user = await prisma.$transaction(async (tx) => {
+        const existingUser = await tx.user.findUnique({
+          where: { phoneNumber: phone },
+          select: { id: true },
+        });
+
+        if (existingUser) {
+          summary.existingUsers += 1;
+
+          const link = await tx.collectionUser.findUnique({
+            where: {
+              collectionId_userId: {
+                collectionId,
+                userId: existingUser.id,
+              },
+            },
+            select: { userId: true },
+          });
+
+          if (!link) {
+            await tx.collectionUser.create({
+              data: {
+                collectionId,
+                userId: existingUser.id,
+              },
+            });
+            summary.linkedUsers += 1;
+          }
+
+          return existingUser;
+        }
+
+        let safeEmail = email;
+        if (safeEmail) {
+          const emailAlreadyUsed = await tx.user.findUnique({
+            where: { email: safeEmail },
+            select: { id: true },
+          });
+          if (emailAlreadyUsed) {
+            safeEmail = null;
+          }
+        }
+
+        const createdUser = await tx.user.create({
+          data: {
+            lastName: lastName || "Inconnu",
+            firstName: firstName || "Inconnu",
+            username: buildImportUsername(
+              lastName || "inconnu",
+              firstName || "inconnu",
+            ),
+            birthdate: new Date("1970-01-01T00:00:00.000Z"),
+            codePostal: "00000",
+            email: safeEmail,
+            phoneNumber: phone,
+            isActive: true,
+            isAdmin: false,
+            type: userType,
+          },
+          select: { id: true },
+        });
+
+        await tx.collectionUser.create({
+          data: {
+            collectionId,
+            userId: createdUser.id,
+          },
+        });
+
+        summary.createdUsers += 1;
+        summary.linkedUsers += 1;
+
+        return createdUser;
+      });
+
+      void user;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Import des benevoles termine.",
+      usersCount: summary.linkedUsers,
+      ...summary,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Failed to import users from Excel", error);
+    return res.status(400).json({
+      success: false,
+      message: "Echec de l'import des benevoles.",
       details: message,
     });
   }

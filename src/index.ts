@@ -11,7 +11,6 @@ const frontendUrlsEnv =
   process.env.FRONTEND_URL ||
   "http://localhost:5173";
 const allowedOrigins = frontendUrlsEnv.split(",").map((s: string) => s.trim());
-console.log("Allowed CORS origins:", allowedOrigins);
 app.use(
   cors({
     origin: (origin: string | undefined, callback: any) => {

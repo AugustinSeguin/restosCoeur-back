@@ -1,165 +1,21 @@
 import { Request, Response } from "express";
 import { Prisma } from "@prisma/client";
 import prisma from "@/libs/prisma";
-
-const isValidPhoneNumber = (phoneNumber: unknown): phoneNumber is string => {
-  return typeof phoneNumber === "string" && /^0[67]\d{8}$/.test(phoneNumber);
-};
-
-const isValidCodePostal = (codePostal: unknown): codePostal is string => {
-  return typeof codePostal === "string" && /^\d{5}$/.test(codePostal);
-};
-
-const parseBirthdate = (birthdate: unknown): Date | null => {
-  if (!(typeof birthdate === "string" || birthdate instanceof Date)) {
-    return null;
-  }
-
-  const parsedDate = new Date(birthdate);
-  return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
-};
-
-const sanitizeNamePart = (value: string): string => {
-  return value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z]/g, "");
-};
-
-const generateUsername = (
-  lastName: unknown,
-  firstName: unknown,
-): string | null => {
-  if (typeof lastName !== "string" || typeof firstName !== "string") {
-    return null;
-  }
-
-  const username = `${sanitizeNamePart(lastName)}${sanitizeNamePart(firstName)}`;
-  return username.length > 0 ? username : null;
-};
-
-const normalizeIds = (ids: unknown): number[] => {
-  if (!Array.isArray(ids)) return [];
-
-  const normalized = ids
-    .map((id) => (typeof id === "string" ? Number.parseInt(id, 10) : id))
-    .filter((id): id is number => Number.isInteger(id) && id > 0);
-
-  return [...new Set(normalized)];
-};
-
-const normalizeOptionalId = (value: unknown): number | null | undefined => {
-  if (value === undefined) return undefined;
-  if (value === null || value === "") return null;
-
-  const parsed =
-    typeof value === "string" ? Number.parseInt(value, 10) : (value as number);
-
-  if (!Number.isInteger(parsed) || parsed <= 0) {
-    return undefined;
-  }
-
-  return parsed;
-};
-
-const findInvalidSlotIdsForCollection = async (
-  slotIds: number[],
-  collectionId: number,
-): Promise<number[]> => {
-  if (slotIds.length === 0) return [];
-
-  const existingSlots = await prisma.slot.findMany({
-    where: { id: { in: slotIds }, collectionId },
-    select: { id: true },
-  });
-
-  const existingIds = new Set(existingSlots.map((slot) => slot.id));
-  return slotIds.filter((id) => !existingIds.has(id));
-};
-
-const findInvalidZoneIdsForCollection = async (
-  zoneIds: number[],
-  collectionId: number,
-): Promise<number[]> => {
-  if (zoneIds.length === 0) return [];
-
-  const existingLinks = await prisma.collectionZone.findMany({
-    where: {
-      collectionId,
-      zoneId: { in: zoneIds },
-    },
-    select: { zoneId: true },
-  });
-
-  const existingIds = new Set(existingLinks.map((link) => link.zoneId));
-  return zoneIds.filter((id) => !existingIds.has(id));
-};
-
-type AnswerSelection = {
-  slotId: number | null;
-  zoneId: number | null;
-};
-
-const buildSelections = (
-  slotIds: number[],
-  zoneIds: number[],
-  slotId: number | null | undefined,
-  zoneId: number | null | undefined,
-): AnswerSelection[] => {
-  if (slotIds.length > 0 && zoneIds.length > 0) {
-    return slotIds.flatMap((s) =>
-      zoneIds.map((z) => ({ slotId: s, zoneId: z })),
-    );
-  }
-
-  if (slotIds.length > 0) {
-    return slotIds.map((s) => ({ slotId: s, zoneId: zoneId ?? null }));
-  }
-
-  if (zoneIds.length > 0) {
-    return zoneIds.map((z) => ({ slotId: slotId ?? null, zoneId: z }));
-  }
-
-  return [{ slotId: slotId ?? null, zoneId: zoneId ?? null }];
-};
-
-const dedupeSelections = (selections: AnswerSelection[]): AnswerSelection[] => {
-  const seen = new Set<string>();
-  const output: AnswerSelection[] = [];
-
-  for (const selection of selections) {
-    const key = `${selection.slotId ?? "null"}:${selection.zoneId ?? "null"}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      output.push(selection);
-    }
-  }
-
-  return output;
-};
-
-const userAnswerInclude = {
-  user: {
-    select: {
-      id: true,
-      lastName: true,
-      firstName: true,
-      username: true,
-      birthdate: true,
-      codePostal: true,
-      email: true,
-      phoneNumber: true,
-    },
-  },
-  collectionUser: {
-    include: {
-      collection: true,
-    },
-  },
-  slot: true,
-  zone: true,
-} as const;
+import {
+  generateUsername,
+  isValidCodePostal,
+  isValidPhoneNumber,
+  normalizeIds,
+  parseBirthdate,
+} from "@/helpers/userHelper";
+import {
+  buildSelections,
+  dedupeSelections,
+  findInvalidSlotIdsForCollection,
+  findInvalidZoneIdsForCollection,
+  normalizeOptionalId,
+  userAnswerInclude,
+} from "@/helpers/userAnswerHelper";
 
 export const createUserAnswer = async (req: Request, res: Response) => {
   try {

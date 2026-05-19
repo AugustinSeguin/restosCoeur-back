@@ -10,8 +10,15 @@ import * as authApi from "./auth.api";
 import * as notificationApi from "./notification.api";
 import { authMiddleware } from "@/middlewares/auth.middleware";
 import { apiKeyMiddleware } from "../middlewares/apiKey.middleware";
+import multer from "multer";
 
 const router = Router();
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+});
 
 // ─── Auth Routes (public) ────────────────────────────────────────────────────
 router.post("/auth/login", authApi.login);
@@ -38,6 +45,11 @@ router.get("/zones", zoneApi.getAllZones);
 // ─── Collection Routes ────────────────────────────────────────────────────────
 router.post("/collections", collectionApi.createCollection);
 router.put("/collections/:id", collectionApi.updateCollection);
+router.post(
+  "/collections/:id/users",
+  upload.single("file"),
+  collectionApi.importUsersByCollectionId,
+);
 router.get("/collectionsBoard/:id", collectionApi.getCollectionBoardById);
 router.get("/collections/:id/users", collectionApi.getUsersExcelByCollectionId);
 router.get("/exportCollection/:id", collectionApi.exportCollection);
