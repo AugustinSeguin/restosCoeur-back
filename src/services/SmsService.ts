@@ -32,8 +32,46 @@ export const sendSms = async (
     );
     return;
   }
+  const formatToE164 = (raw: string, defaultCountry = "FR"): string | null => {
+    if (!raw) return null;
+    let digits = raw.replace(/\D/g, "");
 
-  const normalizedPhoneNumber = user.phoneNumber.replaceAll(/\D/g, "");
+    if (digits.startsWith("00")) {
+      return "+" + digits.slice(2);
+    }
+
+    if (digits.startsWith("+")) {
+      return digits;
+    }
+
+    if (
+      digits.startsWith("0") &&
+      digits.length === 10 &&
+      defaultCountry === "FR"
+    ) {
+      return "+33" + digits.slice(1);
+    }
+
+    if (digits.startsWith("33") && digits.length === 11) {
+      return "+" + digits;
+    }
+
+    return "+" + digits;
+  };
+
+  const normalizedPhoneNumber = formatToE164(user.phoneNumber);
+  if (!normalizedPhoneNumber) {
+    console.error(
+      `[SmsService] Impossible de normaliser le numero pour l'utilisateur ${user.id}`,
+    );
+    return;
+  }
+
+  if (typeof fetch === "undefined") {
+    throw new Error(
+      "fetch is not available in this Node runtime. Use Node 18+ or install a fetch polyfill like 'node-fetch'.",
+    );
+  }
   const message = generateNotificationMessage(
     collectionName,
     user,
