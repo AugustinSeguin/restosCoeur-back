@@ -38,11 +38,21 @@ export const updateSlot = async (req: Request, res: Response) => {
 export const deleteSlot = async (req: Request, res: Response) => {
   try {
     const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    await prisma.slot.delete({
-      where: { id: Number.parseInt(id) },
-    });
+    const slotId = Number.parseInt(id);
+
+    // Ensure the slot exists
+    const existing = await prisma.slot.findUnique({ where: { id: slotId } });
+    if (!existing) return res.status(404).json({ error: "Slot not found" });
+
+    // Delete dependent assignments first, then the slot to avoid FK constraint errors.
+    await prisma.$transaction([
+      prisma.assignment.deleteMany({ where: { slotId } }),
+      prisma.slot.delete({ where: { id: slotId } }),
+    ]);
+
     res.status(204).send();
   } catch (error) {
+    console.error(error);
     res.status(400).json({ error: "Failed to delete slot" });
   }
 };

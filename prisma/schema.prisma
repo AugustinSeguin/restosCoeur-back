@@ -105,7 +105,7 @@ model Assignment {
   storeId      Int
   collectionId Int
   user         User       @relation(fields: [userId], references: [id])
-  slot         Slot       @relation(fields: [slotId], references: [id])
+  slot         Slot       @relation(fields: [slotId], references: [id], onDelete: Cascade)
   store        Store      @relation(fields: [storeId], references: [id])
   collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
 

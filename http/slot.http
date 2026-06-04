@@ -38,6 +38,6 @@ X-API-Key: {{api_key}}
 }
 
 ### Delete Slot
-DELETE {{api_url}}/slots/1
+DELETE {{api_url}}/slots/2
 Authorization: Bearer {{token}}
 X-API-Key: {{api_key}}
