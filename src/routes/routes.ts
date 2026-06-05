@@ -1,6 +1,7 @@
 import { Router } from "express";
 import * as zoneApi from "./zone.api";
 import * as collectionApi from "./collection.api";
+import * as exportCollectionApi from "./exportCollection.api";
 import * as storeApi from "./store.api";
 import * as slotApi from "./slot.api";
 import * as userApi from "./user.api";
@@ -45,14 +46,18 @@ router.get("/zones", zoneApi.getAllZones);
 // ─── Collection Routes ────────────────────────────────────────────────────────
 router.post("/collections", collectionApi.createCollection);
 router.put("/collections/:id", collectionApi.updateCollection);
+router.delete("/collection/:id", collectionApi.deleteCollection);
 router.post(
   "/collections/:id/users",
   upload.single("file"),
-  collectionApi.importUsersByCollectionId,
+  exportCollectionApi.importUsersByCollectionId,
 );
 router.get("/collectionsBoard/:id", collectionApi.getCollectionBoardById);
-router.get("/collections/:id/users", collectionApi.getUsersExcelByCollectionId);
-router.get("/exportCollection/:id", collectionApi.exportCollection);
+router.get(
+  "/collections/:id/users",
+  exportCollectionApi.getUsersExcelByCollectionId,
+);
+router.get("/exportCollection/:id", exportCollectionApi.exportCollection);
 router.get("/collections", collectionApi.getAllCollections);
 router.post(
   "/collections/:id/notifications",
