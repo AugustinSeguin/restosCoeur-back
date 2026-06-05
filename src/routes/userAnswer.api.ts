@@ -7,6 +7,7 @@ import {
   isValidPhoneNumber,
   normalizeIds,
   parseBirthdate,
+  formatPhoneNumber,
 } from "@/helpers/userHelper";
 import {
   buildSelections,
@@ -61,7 +62,14 @@ export const createUserAnswer = async (req: Request, res: Response) => {
     if (!isValidPhoneNumber(phoneNumber)) {
       return res.status(400).json({
         error:
-          "Invalid phoneNumber format. Expected 10 digits, starting with 06 or 07, with no spaces or special characters",
+          "Invalid phoneNumber format. Expected 10 digits starting with 06 or 07, or +33 followed by 9 digits, with no spaces",
+      });
+    }
+
+    const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+    if (!formattedPhoneNumber) {
+      return res.status(400).json({
+        error: "Failed to format phoneNumber",
       });
     }
 
@@ -130,14 +138,53 @@ export const createUserAnswer = async (req: Request, res: Response) => {
       });
     }
 
-    let user = await prisma.user.findFirst({
+    const safeEmail =
+      typeof email === "string" && email.trim().length > 0
+        ? email.trim()
+        : null;
+
+    const phoneSearchValues = [formattedPhoneNumber];
+    if (formattedPhoneNumber.startsWith("+33")) {
+      phoneSearchValues.push(`0${formattedPhoneNumber.slice(3)}`);
+    }
+
+    const existingUser = await prisma.user.findFirst({
       where: {
-        phoneNumber,
-        username,
+        OR: [
+          ...phoneSearchValues.map((phone) => ({ phoneNumber: phone })),
+          ...(safeEmail
+            ? [
+                {
+                  email: {
+                    equals: safeEmail,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ]
+            : []),
+        ],
       },
     });
 
+    let user = existingUser;
+
     if (!user) {
+      let emailToStore: string | null = null;
+      if (safeEmail) {
+        const existingEmailUser = await prisma.user.findFirst({
+          where: {
+            email: {
+              equals: safeEmail,
+              mode: "insensitive" as const,
+            },
+          },
+          select: { id: true },
+        });
+        if (!existingEmailUser) {
+          emailToStore = safeEmail;
+        }
+      }
+
       user = await prisma.user.create({
         data: {
           lastName,
@@ -145,8 +192,8 @@ export const createUserAnswer = async (req: Request, res: Response) => {
           username,
           birthdate: parsedBirthdate,
           codePostal,
-          email: email || null,
-          phoneNumber,
+          email: emailToStore,
+          phoneNumber: formattedPhoneNumber,
           password: null,
           isAdmin: false,
           isActive: true,
@@ -250,10 +297,10 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
       });
     }
 
-    if (!isValidPhoneNumber(phoneNumber)) {
+    const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+    if (!formattedPhoneNumber) {
       return res.status(400).json({
-        error:
-          "Invalid phoneNumber format. Expected 10 digits, starting with 06 or 07, with no spaces or special characters",
+        error: "Failed to format phoneNumber",
       });
     }
 
@@ -348,7 +395,7 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
           username,
           birthdate: parsedBirthdate,
           codePostal,
-          phoneNumber,
+          phoneNumber: formattedPhoneNumber,
           email: email || null,
         },
       });

@@ -5,9 +5,9 @@ import {
   findInvalidCollectionIds,
   generateUsername,
   isValidCodePostal,
-  isValidPhoneNumber,
   normalizeIds,
   parseBirthdate,
+  formatPhoneNumber,
 } from "@/helpers/userHelper";
 
 export const createUser = async (req: Request, res: Response) => {
@@ -35,10 +35,10 @@ export const createUser = async (req: Request, res: Response) => {
       });
     }
 
-    if (!isValidPhoneNumber(phoneNumber)) {
+    const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+    if (!formattedPhoneNumber) {
       return res.status(400).json({
-        error:
-          "Invalid phoneNumber format. Expected 10 digits, starting with 06 or 07, with no spaces or special characters",
+        error: "Failed to format phoneNumber",
       });
     }
 
@@ -87,7 +87,7 @@ export const createUser = async (req: Request, res: Response) => {
         birthdate: parsedBirthdate,
         codePostal,
         email: email || null,
-        phoneNumber,
+        phoneNumber: formattedPhoneNumber,
         password: hashedPassword,
         isActive: isActive ?? true,
         isAdmin: isAdmin ?? false,
@@ -140,10 +140,10 @@ export const updateUser = async (req: Request, res: Response) => {
       });
     }
 
-    if (!isValidPhoneNumber(phoneNumber)) {
+    const formattedPhoneNumber = formatPhoneNumber(phoneNumber);
+    if (!formattedPhoneNumber) {
       return res.status(400).json({
-        error:
-          "Invalid phoneNumber format. Expected 10 digits, starting with 06 or 07, with no spaces or special characters",
+        error: "Failed to format phoneNumber",
       });
     }
 
@@ -195,7 +195,7 @@ export const updateUser = async (req: Request, res: Response) => {
         birthdate: parsedBirthdate,
         codePostal,
         email: email || null,
-        phoneNumber,
+        phoneNumber: formattedPhoneNumber,
         ...(hashedPassword !== undefined && { password: hashedPassword }),
         isActive,
         isAdmin,

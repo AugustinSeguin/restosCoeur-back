@@ -76,6 +76,175 @@ export const exportCollection = async (req: Request, res: Response) => {
 
     const workbook = new ExcelJS.Workbook();
 
+    // Create "Utilisateurs" worksheet with users and their slot assignments
+    const allSlots = Array.from(
+      new Set(
+        collection.users
+          .flatMap((cu) => cu.user.assignments)
+          .filter((a) => a.slot)
+          .map((a) => a.slotId),
+      ),
+    );
+
+    const slotsByIdMap = new Map<
+      number,
+      { id: number; title: string; startAt: Date }
+    >();
+    collection.users.forEach((cu) => {
+      cu.user.assignments.forEach((a) => {
+        if (a.slot && !slotsByIdMap.has(a.slot.id)) {
+          slotsByIdMap.set(a.slot.id, {
+            id: a.slot.id,
+            title: formatSlotLabel(a.slot),
+            startAt: a.slot.startAt,
+          });
+        }
+      });
+    });
+
+    const sortedSlots = Array.from(slotsByIdMap.values()).sort(
+      (a, b) => a.startAt.getTime() - b.startAt.getTime(),
+    );
+
+    const utilisateursWorksheet = workbook.addWorksheet("Global");
+    const columnCount = sortedSlots.length + 1;
+    const titleRowIndex = 1;
+    const headerRowIndex = 2;
+    const firstDataRowIndex = 3;
+
+    utilisateursWorksheet.mergeCells(
+      titleRowIndex,
+      1,
+      titleRowIndex,
+      columnCount,
+    );
+    utilisateursWorksheet.getCell(titleRowIndex, 1).value =
+      "Récapitulatif global";
+    utilisateursWorksheet.getCell(titleRowIndex, 1).font = {
+      bold: true,
+      size: 14,
+      color: { argb: "FFFFFFFF" },
+    };
+    utilisateursWorksheet.getCell(titleRowIndex, 1).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF8B1E1E" },
+    };
+    utilisateursWorksheet.getCell(titleRowIndex, 1).alignment = {
+      vertical: "middle",
+      horizontal: "center",
+    };
+    utilisateursWorksheet.getRow(titleRowIndex).height = 24;
+
+    // Header: "Utilisateur" + slot labels
+    const headers = ["Utilisateur", ...sortedSlots.map((slot) => slot.title)];
+    headers.forEach((header, index) => {
+      const cell = utilisateursWorksheet.getCell(headerRowIndex, index + 1);
+      cell.value = header;
+      cell.font = {
+        bold: true,
+        color: { argb: "FF7A1C1C" },
+      };
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFFCEEEE" },
+      };
+      cell.alignment = {
+        vertical: "middle",
+        horizontal: "center",
+        wrapText: true,
+      };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFD9C5C5" } },
+        left: { style: "thin", color: { argb: "FFD9C5C5" } },
+        bottom: { style: "thin", color: { argb: "FFD9C5C5" } },
+        right: { style: "thin", color: { argb: "FFD9C5C5" } },
+      };
+    });
+
+    // Sort users alphabetically
+    const sortedUsers = collection.users
+      .map((cu) => cu.user)
+      .sort((a, b) => {
+        const nameA = `${a.lastName || ""} ${a.firstName || ""}`.trim();
+        const nameB = `${b.lastName || ""} ${b.firstName || ""}`.trim();
+        return nameA.localeCompare(nameB, "fr");
+      });
+
+    let rowIndex = firstDataRowIndex;
+    for (const user of sortedUsers) {
+      // Column A: User name
+      const userName = `${user.lastName || ""} ${user.firstName || ""}`.trim();
+      const cell = utilisateursWorksheet.getCell(rowIndex, 1);
+      cell.value = userName;
+      cell.alignment = {
+        vertical: "top",
+        horizontal: "left",
+        wrapText: true,
+      };
+      cell.border = {
+        top: { style: "thin", color: { argb: "FFE5E7EB" } },
+        left: { style: "thin", color: { argb: "FFE5E7EB" } },
+        bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+        right: { style: "thin", color: { argb: "FFE5E7EB" } },
+      };
+
+      // Columns B+: Store title for each slot
+      for (let slotIndex = 0; slotIndex < sortedSlots.length; slotIndex += 1) {
+        const slot = sortedSlots[slotIndex];
+        const assignment = user.assignments.find(
+          (a) => a.collectionId === collectionId && a.slotId === slot.id,
+        );
+
+        const storeTitle = assignment?.store?.title || "";
+        const storeCell = utilisateursWorksheet.getCell(
+          rowIndex,
+          slotIndex + 2,
+        );
+        storeCell.value = storeTitle;
+        storeCell.alignment = {
+          vertical: "top",
+          horizontal: "left",
+          wrapText: true,
+        };
+        storeCell.border = {
+          top: { style: "thin", color: { argb: "FFE5E7EB" } },
+          left: { style: "thin", color: { argb: "FFE5E7EB" } },
+          bottom: { style: "thin", color: { argb: "FFE5E7EB" } },
+          right: { style: "thin", color: { argb: "FFE5E7EB" } },
+        };
+      }
+
+      if ((rowIndex - firstDataRowIndex) % 2 === 1) {
+        for (
+          let columnIndex = 1;
+          columnIndex <= columnCount;
+          columnIndex += 1
+        ) {
+          utilisateursWorksheet.getCell(rowIndex, columnIndex).fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFFAFAFA" },
+          };
+        }
+      }
+
+      rowIndex += 1;
+    }
+
+    fitWorksheetColumns(
+      utilisateursWorksheet,
+      columnCount,
+      [20, ...Array(sortedSlots.length).fill(18)],
+      [24, ...Array(sortedSlots.length).fill(24)],
+    );
+
+    utilisateursWorksheet.getRow(headerRowIndex).height = 22;
+    utilisateursWorksheet.getRow(firstDataRowIndex).height = 20;
+    utilisateursWorksheet.properties.defaultRowHeight = 20;
+    utilisateursWorksheet.views = [{ state: "frozen", ySplit: 2 }];
+
     for (const store of storesInCollection) {
       const safeSheetName = `${store.title ?? "store"}_${store.id}`.slice(
         0,
@@ -277,97 +446,6 @@ export const exportCollection = async (req: Request, res: Response) => {
     console.error("Failed to export collection to Excel", error);
     res.status(400).json({
       error: "Failed to export collection to Excel",
-      details: message,
-    });
-  }
-};
-
-export const getUsersExcelByCollectionId = async (
-  req: Request,
-  res: Response,
-) => {
-  try {
-    const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-    const collectionId = Number.parseInt(id);
-
-    if (!Number.isInteger(collectionId) || collectionId <= 0) {
-      return res.status(400).json({ error: "Invalid collection id" });
-    }
-
-    const collection = await prisma.collection.findUnique({
-      where: { id: collectionId },
-    });
-
-    if (!collection) {
-      return res.status(404).json({ error: "Collection not found" });
-    }
-
-    const users = await prisma.user.findMany({
-      where: {
-        collections: {
-          some: {
-            collectionId,
-          },
-        },
-      },
-      orderBy: {
-        lastName: "asc",
-      },
-    });
-
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Users");
-
-    worksheet.columns = [
-      { header: "ID", key: "id", width: 10 },
-      { header: "Nom", key: "lastName", width: 20 },
-      { header: "Prénom", key: "firstName", width: 20 },
-      { header: "Username", key: "username", width: 20 },
-      { header: "Date de naissance", key: "birthdate", width: 20 },
-      { header: "Code Postal", key: "codePostal", width: 15 },
-      { header: "Email", key: "email", width: 30 },
-      { header: "Téléphone", key: "phoneNumber", width: 15 },
-      { header: "Type", key: "type", width: 15 },
-      { header: "Actif", key: "isActive", width: 10 },
-      { header: "Admin", key: "isAdmin", width: 10 },
-    ];
-
-    worksheet.getRow(1).font = { bold: true };
-
-    users.forEach((user) => {
-      worksheet.addRow({
-        id: user.id,
-        lastName: user.lastName,
-        firstName: user.firstName,
-        username: user.username,
-        birthdate: user.birthdate.toLocaleDateString("fr-FR"),
-        codePostal: user.codePostal,
-        email: user.email,
-        phoneNumber: user.phoneNumber,
-        type: user.type,
-        isActive: user.isActive ? "Oui" : "Non",
-        isAdmin: user.isAdmin ? "Oui" : "Non",
-      });
-    });
-
-    const safeTitle = collection.title
-      .replace(/[\\/\r\n\t\0\v\f"]/g, "-")
-      .trim();
-    const filename = `collection_${safeTitle || collection.id}_users.xlsx`;
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    );
-    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-
-    const buffer = await workbook.xlsx.writeBuffer();
-    res.send(Buffer.from(buffer));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Failed to export users to Excel", error);
-    res.status(400).json({
-      error: "Failed to export users to Excel",
       details: message,
     });
   }

@@ -1,9 +1,37 @@
 import prisma from "@/libs/prisma";
 
+export const formatPhoneNumber = (phoneNumber: unknown): string | null => {
+  if (typeof phoneNumber !== "string") {
+    return null;
+  }
+
+  // Reject if contains spaces
+  if (phoneNumber.includes(" ")) {
+    return null;
+  }
+
+  // If already in +33 format with 9 digits (total 12 chars: +33xxxxxxxxx)
+  if (/^\+33[67]\d{8}$/.test(phoneNumber)) {
+    return phoneNumber;
+  }
+
+  // If in 0X format (10 digits), convert to +33
+  if (/^0[67]\d{8}$/.test(phoneNumber)) {
+    return `+33${phoneNumber.slice(1)}`;
+  }
+
+  // Invalid format
+  return null;
+};
+
 export const isValidPhoneNumber = (
   phoneNumber: unknown,
 ): phoneNumber is string => {
-  return typeof phoneNumber === "string" && /^0[67]\d{8}$/.test(phoneNumber);
+  return (
+    typeof phoneNumber === "string" &&
+    (/^0[67]\d{8}$/.test(phoneNumber) || /^\+33[67]\d{8}$/.test(phoneNumber)) &&
+    !phoneNumber.includes(" ")
+  );
 };
 
 export const isValidCodePostal = (
@@ -41,12 +69,25 @@ export const generateUsername = (
   return username.length > 0 ? username : null;
 };
 
-export const normalizeIds = (ids: unknown): number[] => {
-  if (!Array.isArray(ids)) return [];
+const normalizeSingleId = (value: unknown): number | null => {
+  if (typeof value === "string") {
+    const parsed = Number.parseInt(value, 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
 
-  const normalized = ids
-    .map((id) => (typeof id === "string" ? Number.parseInt(id, 10) : id))
-    .filter((id): id is number => Number.isInteger(id) && id > 0);
+  if (typeof value === "number") {
+    return Number.isInteger(value) && value > 0 ? value : null;
+  }
+
+  return null;
+};
+
+export const normalizeIds = (ids: unknown): number[] => {
+  const values = Array.isArray(ids) ? ids : [ids];
+
+  const normalized = values
+    .map(normalizeSingleId)
+    .filter((id): id is number => id !== null);
 
   return [...new Set(normalized)];
 };
