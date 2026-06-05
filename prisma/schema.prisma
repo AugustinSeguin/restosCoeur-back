@@ -73,7 +73,7 @@ model User {
   id          Int              @id @default(autoincrement())
   lastName    String
   firstName   String
-  username    String           @unique
+  username    String
   birthdate   DateTime         @db.Date
   codePostal  String
   email       String?          @unique
