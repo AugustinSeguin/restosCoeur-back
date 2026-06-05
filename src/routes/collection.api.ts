@@ -9,11 +9,12 @@ import {
 
 export const createCollection = async (req: Request, res: Response) => {
   try {
-    const { title, isActive, formUrl } = req.body;
+    const { title, description, isActive, formUrl } = req.body;
 
     const collection = await prisma.collection.create({
       data: {
         title,
+        description: description || null,
         isActive: isActive ?? true,
         formUrl,
       },
@@ -33,7 +34,7 @@ export const updateCollection = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid collection id" });
     }
 
-    const { title, isActive, formUrl, zoneIds, slots } = req.body;
+    const { title, description, isActive, formUrl, zoneIds, slots } = req.body;
     const normalizedZoneIds = normalizeIds(zoneIds);
 
     const normalizedSlots = Array.isArray(slots)
@@ -111,6 +112,7 @@ export const updateCollection = async (req: Request, res: Response) => {
         where: { id: collectionId },
         data: {
           title,
+          description: description || null,
           isActive,
           formUrl,
           ...(Array.isArray(zoneIds) && {

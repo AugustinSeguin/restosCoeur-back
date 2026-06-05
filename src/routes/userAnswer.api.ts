@@ -31,6 +31,7 @@ export const createUserAnswer = async (req: Request, res: Response) => {
       zoneIds,
       slotId,
       zoneId,
+      comment,
     } = req.body;
 
     const rawCollectionId = req.body.collectionId ?? req.body.collecteId;
@@ -94,25 +95,20 @@ export const createUserAnswer = async (req: Request, res: Response) => {
       });
     }
 
-    const slotIdsToValidate = dedupeSelections(
+    const selections = dedupeSelections(
       buildSelections(
         normalizedSlotIds,
         normalizedZoneIds,
         normalizedSlotId,
         normalizedZoneId,
       ),
-    )
+    );
+
+    const slotIdsToValidate = selections
       .map((selection) => selection.slotId)
       .filter((id): id is number => typeof id === "number");
 
-    const zoneIdsToValidate = dedupeSelections(
-      buildSelections(
-        normalizedSlotIds,
-        normalizedZoneIds,
-        normalizedSlotId,
-        normalizedZoneId,
-      ),
-    )
+    const zoneIdsToValidate = selections
       .map((selection) => selection.zoneId)
       .filter((id): id is number => typeof id === "number");
 
@@ -216,14 +212,10 @@ export const createUserAnswer = async (req: Request, res: Response) => {
       },
     });
 
-    const selections = dedupeSelections(
-      buildSelections(
-        normalizedSlotIds,
-        normalizedZoneIds,
-        normalizedSlotId,
-        normalizedZoneId,
-      ),
-    );
+    const safeComment =
+      typeof comment === "string" && comment.trim().length > 0
+        ? comment.trim()
+        : null;
 
     const existingAnswers = await prisma.userAnswer.findMany({
       where: {
@@ -251,6 +243,7 @@ export const createUserAnswer = async (req: Request, res: Response) => {
               collectionId: parsedCollectionId,
               slotId: selection.slotId,
               zoneId: selection.zoneId,
+              comment: safeComment,
             },
             include: userAnswerInclude,
           }),
@@ -288,6 +281,7 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
       zoneId,
       slotIds,
       zoneIds,
+      comment,
     } = req.body;
 
     if (!lastName || !firstName || !birthdate || !codePostal || !phoneNumber) {
@@ -360,6 +354,11 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
     const normalizedZoneId =
       normalizeOptionalId(zoneId) ?? fallbackZoneId ?? undefined;
 
+    const safeComment =
+      typeof comment === "string" && comment.trim().length > 0
+        ? comment.trim()
+        : null;
+
     if (normalizedSlotId !== undefined && normalizedSlotId !== null) {
       const invalidSlotIds = await findInvalidSlotIdsForCollection(
         [normalizedSlotId],
@@ -405,6 +404,7 @@ export const updateUserAnswer = async (req: Request, res: Response) => {
         data: {
           ...(normalizedSlotId !== undefined && { slotId: normalizedSlotId }),
           ...(normalizedZoneId !== undefined && { zoneId: normalizedZoneId }),
+          ...(comment !== undefined && { comment: safeComment }),
         },
       });
     });

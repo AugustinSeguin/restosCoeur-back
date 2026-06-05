@@ -6,6 +6,7 @@ import type { Store } from "./store";
 export interface Collection {
   id: number;
   title: string;
+  description?: string | null;
   isActive: boolean;
   formUrl: string;
   users?: Array<{
@@ -35,6 +36,7 @@ export interface Collection {
 export interface CreateCollectionDto {
   id: number;
   title: string;
+  description?: string | null;
   isActive?: boolean;
   formUrl: string;
   userIds?: number[];

@@ -32,7 +32,7 @@ router.get("/collections/:id", collectionApi.getCollectionById);
 
 // ────────────────────────────────────────────────────────────────────────────
 // All routes below require authentication
-// ────────────────────────────────────────────────────────────────────────────
+// // ────────────────────────────────────────────────────────────────────────────
 router.use(authMiddleware);
 router.use(apiKeyMiddleware);
 
@@ -53,10 +53,6 @@ router.post(
   exportCollectionApi.importUsersByCollectionId,
 );
 router.get("/collectionsBoard/:id", collectionApi.getCollectionBoardById);
-router.get(
-  "/collections/:id/users",
-  exportCollectionApi.getUsersExcelByCollectionId,
-);
 router.get("/exportCollection/:id", exportCollectionApi.exportCollection);
 router.get("/collections", collectionApi.getAllCollections);
 router.post(

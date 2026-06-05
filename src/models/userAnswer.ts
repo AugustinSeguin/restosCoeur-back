@@ -4,6 +4,7 @@ export interface UserAnswer {
   collectionId: number;
   slotId: number | null;
   zoneId: number | null;
+  comment?: string | null;
   createdAt: Date;
   updatedAt: Date;
   user?: {
@@ -45,6 +46,7 @@ export interface CreateUserAnswerDto {
   collectionId: number;
   slotId?: number | null;
   zoneId?: number | null;
+  comment?: string | null;
 }
 
 export interface UpdateUserAnswerDto {
@@ -56,4 +58,5 @@ export interface UpdateUserAnswerDto {
   email?: string | null;
   slotId?: number | null;
   zoneId?: number | null;
+  comment?: string | null;
 }

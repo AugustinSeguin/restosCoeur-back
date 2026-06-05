@@ -20,6 +20,7 @@ enum UserType {
 model Collection {
   id          Int              @id @default(autoincrement())
   title       String
+  description String?
   isActive    Boolean          @default(true)
   formUrl     String
   zones       CollectionZone[]
@@ -119,6 +120,7 @@ model UserAnswer {
   collectionId   Int            @map("collecteId")
   slotId         Int?
   zoneId         Int?
+  comment        String?
   user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   collectionUser CollectionUser @relation(fields: [collectionId, userId], references: [collectionId, userId], onDelete: Cascade)
   slot           Slot?          @relation(fields: [slotId], references: [id], onDelete: SetNull)
