@@ -1,7 +1,7 @@
-@api_url = http://localhost:3000/api
+@api_url = https://api.restos-coeur.cleanascode.fr/api
+
 @token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjExLCJpYXQiOjE3Nzg2NjYzNDQsImV4cCI6MTc3ODc1Mjc0NH0.xnkwg_0weTQaw9VRSzAw7Y-uh8PHGT1nr61akfwdzvA
 @api_key = your-api-key-change-in-production
-# "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImlhdCI6MTc3MzIzNzE4OSwiZXhwIjoxNzczMzIzNTg5fQ.0yttqutpuVt-Yx8FS8uEeWzukx7hlu9n2Hm-FI4qrzM"
 
 ### Create User
 POST {{api_url}}/users
@@ -10,12 +10,12 @@ Authorization: Bearer {{token}}
 X-API-Key: {{api_key}}
 
 {
-  "lastName": "DuZpont",
-  "firstName": "Jean",
-  "birthdate": "1990-05-14",
+  "lastName": "SEGUIN",
+  "firstName": "Augustin",
+  "birthdate": "1998-06-15",
   "codePostal": "75011",
-  "email": "admin@example.com",
-  "phoneNumber": "0612345678",
+  "email": "augustin.seguin@inetum.com",
+  "phoneNumber": "0685346728",
   "isActive": true,
   "isAdmin": true,
   "type": "permanent",
