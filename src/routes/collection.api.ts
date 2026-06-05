@@ -203,8 +203,16 @@ export const deleteCollection = async (req: Request, res: Response) => {
       return res.status(400).json({ error: "Invalid collection id" });
     }
 
-    const deletedCollection = await prisma.collection.delete({
-      where: { id: collectionId },
+    const deletedCollection = await prisma.$transaction(async (tx) => {
+      await tx.userAnswer.deleteMany({ where: { collectionId } });
+      await tx.assignment.deleteMany({ where: { collectionId } });
+      await tx.collectionUser.deleteMany({ where: { collectionId } });
+      await tx.collectionZone.deleteMany({ where: { collectionId } });
+      await tx.slot.deleteMany({ where: { collectionId } });
+
+      return tx.collection.delete({
+        where: { id: collectionId },
+      });
     });
 
     res.json({

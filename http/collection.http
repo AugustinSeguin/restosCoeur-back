@@ -58,3 +58,27 @@ X-API-Key: {{api_key}}
     }
   ]
 }
+
+### Delete Collection
+DELETE {{api_url}}/collections/1
+Authorization: Bearer {{token}}
+X-API-Key: {{api_key}}
+
+{
+  "title": "Collecte Mars 2026 - Updated",
+  "isActive": true,
+  "formUrl": "https://forms.example.com/collecte1-updated",
+  "userIds": [2, 3],
+  "zoneIds": [1],
+  "slots": [
+    {
+      "id": 1,
+      "startAt": "2026-03-15T08:00:00.000Z",
+      "endAt": "2026-03-15T12:00:00.000Z"
+    },
+    {
+      "startAt": "2026-03-16T13:00:00.000Z",
+      "endAt": "2026-03-16T17:00:00.000Z"
+    }
+  ]
+}

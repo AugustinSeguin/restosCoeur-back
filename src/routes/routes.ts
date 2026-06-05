@@ -46,7 +46,7 @@ router.get("/zones", zoneApi.getAllZones);
 // ─── Collection Routes ────────────────────────────────────────────────────────
 router.post("/collections", collectionApi.createCollection);
 router.put("/collections/:id", collectionApi.updateCollection);
-router.delete("/collection/:id", collectionApi.deleteCollection);
+router.delete("/collections/:id", collectionApi.deleteCollection);
 router.post(
   "/collections/:id/users",
   upload.single("file"),
