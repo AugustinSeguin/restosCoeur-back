@@ -5,14 +5,11 @@ export const formatPhoneNumber = (phoneNumber: unknown): string | null => {
     return null;
   }
 
-  // Reject if contains spaces
-  if (phoneNumber.includes(" ")) {
-    return null;
-  }
+  const normalizedPhoneNumber = phoneNumber.replace(/\s+/g, "");
 
   // If already in +33 format with 9 digits (total 12 chars: +33xxxxxxxxx)
-  if (/^\+33[67]\d{8}$/.test(phoneNumber)) {
-    return phoneNumber;
+  if (/^\+33[67]\d{8}$/.test(normalizedPhoneNumber)) {
+    return normalizedPhoneNumber;
   }
 
   // If in 0X format (10 digits), convert to +33
